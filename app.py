@@ -28,7 +28,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Encabezado principal de la aplicación
-st.title("☁️ KiroDocs")
+st.title("☁️ KiroDocs v1.0")
 st.subheader("Generador Inteligente de Arquitecturas AWS con Kiro AI (Bedrock)")
 st.write("Convierte tus ideas de infraestructura en diagramas interactivos y documentación técnica instantánea.")
 
