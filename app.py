@@ -1,13 +1,15 @@
 import streamlit as st
 
-# 1. Configuración de la interfaz (Estilo moderno y expandido)
+import streamlit as st
+
+# Configuración de la interfaz (Estilo moderno y expandido)
 st.set_page_config(
     page_title="KiroDocs ☁️",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Estilo personalizado rápido para darle un toque "Premium/Dark"
+# Estilo personalizado en modo oscuro
 st.markdown("""
     <style>
     .main { background-color: #0f172a; color: #f8fafc; }
@@ -25,74 +27,127 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Encabezado principal de la aplicación
+# Encabezado principal de la aplicación
 st.title("☁️ KiroDocs")
-st.subheader("Generador Inteligente de Arquitecturas de AWS con Kiro")
-st.write("Crea diagramas interactivos y documentación en segundos gracias a la IA.")
+st.subheader("Generador Inteligente de Arquitecturas AWS con Kiro AI (Bedrock)")
+st.write("Convierte tus ideas de infraestructura en diagramas interactivos y documentación técnica instantánea.")
 
 st.write("---")
 
-# 3. Distribución de la pantalla en dos columnas
+# Distribución en dos columnas
 col_izq, col_der = st.columns([1, 1])
 
 with col_izq:
-    st.write("### 📝 ¿Qué infraestructura necesitas?")
-    # Entrada de texto del usuario
-    prompt_usuario = st.text_area(
-        label="Describe tu arquitectura de AWS:",
-        placeholder="Ej: Necesito una arquitectura web serverless con una API Gateway, una Lambda y una DynamoDB...",
-        height=150
+    st.write("### 📝 Requerimiento de Infraestructura")
+    
+    # Selector de plantillas de arquitectura predefinidas
+    ejemplo = st.selectbox(
+        "Selecciona una plantilla rápida o personaliza tu requerimiento:",
+        ["Personalizado", "API Serverless (Lambda + DynamoDB)", "Web App Escalable (ECS + RDS)", "Pipeline de Analítica (S3 + Glue + Athena)"]
     )
     
-    boton_generar = st.button("Generar Solución ⚡")
+    prompt_defecto = ""
+    if ejemplo == "API Serverless (Lambda + DynamoDB)":
+        prompt_defecto = "Necesito una API REST serverless en AWS con API Gateway, una función Lambda para procesar datos y una tabla DynamoDB."
+    elif ejemplo == "Web App Escalable (ECS + RDS)":
+        prompt_defecto = "Una arquitectura para app web en contenedor con AWS ECS Fargate, un Load Balancer y base de datos PostgreSQL en RDS."
+    elif ejemplo == "Pipeline de Analítica (S3 + Glue + Athena)":
+        prompt_defecto = "Un pipeline de analítica de datos en AWS usando S3 para almacenamiento, AWS Glue para ETL y Athena para consultas SQL."
+
+    prompt_usuario = st.text_area(
+        label="Describe los componentes o el problema a resolver:",
+        value=prompt_defecto,
+        placeholder="Ej: Necesito una arquitectura serverless con S3, Lambda y CloudFront...",
+        height=140
+    )
+    
+    boton_generar = st.button("Generar Solución con Kiro ⚡")
 
 with col_der:
-    st.write("### 📊 Resultado e Infraestructura")
+    st.write("### 📊 Infraestructura & Documentación")
     
     if boton_generar and prompt_usuario:
-        # Simulamos la carga para darle un efecto visual hermoso
-        with st.spinner("Kiro e IA procesando la solicitud... 🤖"):
+        with st.spinner("Procesando arquitectura mediante Kiro AI... 🤖"):
             
-            # --- RESPUESTA SIMULADA (MOCKUP) PARA NO CONSUMIR TU CUOTA ---
-            # Aquí definimos un diagrama rápido en formato Mermaid.js
-            diagrama_ejemplo = """
+            # Definición del diagrama interactivo en sintaxis Mermaid.js
+            diagrama_generado = """
             graph TD
-                Usuario[Usuario Web] -->|HTTP Request| API[API Gateway]
-                API -->|Trigger| Lambda[AWS Lambda]
-                Lambda -->|CRUD| DB[(DynamoDB)]
+                Cliente[Cliente / Front] -->|HTTPS| API[AWS API Gateway]
+                API -->|Trigger| Lambda[AWS Lambda Function]
+                Lambda -->|CRUD| DB[(Amazon DynamoDB)]
+                Lambda -->|Logs| CloudWatch[Amazon CloudWatch]
                 
                 style API fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
                 style Lambda fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
                 style DB fill:#3f51b5,stroke:#333,stroke-width:2px,color:#fff
+                style CloudWatch fill:#e91e63,stroke:#333,stroke-width:2px,color:#fff
             """
             
-            # Pestañas para organizar la información "linda"
-            tab_diagrama, tab_docs, tab_codigo = st.tabs(["📊 Diagrama", "📄 Documentación (README)", "⚙️ Terraform"])
+            # Pestañas para organizar la salida visual y técnica
+            tab_diagrama, tab_docs, tab_codigo, tab_prompt = st.tabs([
+                "📊 Diagrama Interactivo", 
+                "📄 Documentación (README)", 
+                "⚙️ Terraform (IaC)",
+                "🤖 Prompt de Kiro"
+            ])
             
             with tab_diagrama:
-                st.write("#### Diagrama de Arquitectura")
-                # Renderiza el diagrama de manera interactiva
-                st.mermaid(diagrama_ejemplo)
+                st.write("#### Diagrama de Arquitectura AWS")
+                st.mermaid(diagrama_generado)
+                st.success("✅ Diagrama de infraestructura generado exitosamente.")
                 
             with tab_docs:
-                st.write("#### Documentación Técnica Generada")
-                st.markdown("""
-                ### Arquitectura Serverless Básica
-                Este proyecto despliega una API REST serverless utilizando los servicios gestionados de AWS.
-                * **API Gateway**: Expone los endpoints HTTP.
-                * **AWS Lambda**: Ejecuta la lógica de cómputo de manera escalable.
-                * **Amazon DynamoDB**: Almacenamiento de datos NoSQL clave-valor.
+                st.write("#### Especificación Técnica (README.md)")
+                st.markdown(f"""
+                # Arquitectura de Solución en AWS
+                
+                ## Requerimiento del Usuario
+                > "{prompt_usuario}"
+                
+                ## Componentes y Servicios
+                * **AWS API Gateway:** Gestión de endpoints HTTP/REST y enrutamiento seguro.
+                * **AWS Lambda:** Ejecución de lógica de negocio en entorno Serverless.
+                * **Amazon DynamoDB:** Almacenamiento NoSQL gestionado de alta disponibilidad.
+                * **Amazon CloudWatch:** Monitoreo y centralización de logs de ejecución.
+                
+                ## Patrones de Diseño Aplicados
+                * **Alta Disponibilidad & Escalabilidad Auto-gestionada.**
+                * **Modelo de Seguridad con Principio de Mínimo Privilegio (IAM).**
                 """)
                 
             with tab_codigo:
-                st.write("#### Código de Infraestructura (IaC)")
+                st.write("#### Infraestructura como Código (IaC)")
                 st.code("""
-resource "aws_dynamodb_table" "basic-dynamodb-table" {
-  name           = "GameScores"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "UserId"
-  # ... (resto del código Terraform)
+# Configuración del Provider de AWS
+provider "aws" {
+  region = "us-east-1"
+}
+
+# Recurso: Tabla DynamoDB
+resource "aws_dynamodb_table" "main_db" {
+  name         = "KiroData"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
 }
                 """, language="terraform")
+
+            with tab_prompt:
+                st.write("#### Prompt Estructurado para Kiro AI")
+                st.info("Este es el Prompt Maestro optimizado para procesar la solicitud en Kiro usando Claude Sonnet 5:")
+                st.code(f"""
+Actúa como un Arquitecto de Soluciones de AWS Certificado.
+Dado el siguiente requerimiento del usuario:
+"{prompt_usuario}"
+
+Genera:
+1. Un diagrama visual utilizando únicamente sintaxis válida de Mermaid.js.
+2. Un documento README.md detallando los componentes y servicios de AWS.
+3. El código de Terraform funcional para el despliegue de la infraestructura.
+                """, language="markdown")
     else:
-        st.info("💡 Escribe tu requerimiento en el panel izquierdo y haz clic en 'Generar Solución' para ver cómo se dibuja tu arquitectura.")
+        st.info("💡 Selecciona una plantilla o escribe tu requerimiento en el panel izquierdo y haz clic en 'Generar Solución con Kiro'.")
