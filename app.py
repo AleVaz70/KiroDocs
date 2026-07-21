@@ -55,10 +55,8 @@ st.markdown(
 MODELOS_DISPONIBLES = {
     "Amazon Nova Lite (⚡ Recomendado)": "us.amazon.nova-lite-v1:0",
     "Amazon Nova Pro": "us.amazon.nova-pro-v1:0",
-    "Claude 3.5 Sonnet v2": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-    "Claude 3 Haiku": "anthropic.claude-3-haiku-20240307-v1:0",
-    "Meta Llama 3.2 3B": "us.meta.llama3-2-3b-instruct-v1:0",
-    "Amazon Nova Micro (Super Liviano)": "us.amazon.nova-micro-v1:0"
+    "Amazon Nova Micro": "us.amazon.nova-micro-v1:0",
+    "Claude 3 Haiku": "anthropic.claude-3-haiku-20240307-v1:0"
 }
 
 REGIONES_DISPONIBLES = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
