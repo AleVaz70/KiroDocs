@@ -8,6 +8,7 @@ Mermaid.js, documentación README y código Terraform.
 """
 
 import textwrap
+from pathlib import Path
 
 import boto3
 import streamlit as st
@@ -28,26 +29,22 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Estilo personalizado en modo oscuro
-st.markdown(
+
+def cargar_css(file_path: str = "styles.css") -> None:
+    """Lee un archivo CSS externo y lo inyecta en la app de Streamlit.
+
+    Si el archivo no existe, la app continúa sin estilos personalizados en
+    lugar de interrumpir la ejecución.
     """
-    <style>
-    .main { background-color: #0f172a; color: #f8fafc; }
-    h1 { color: #38bdf8 !important; }
-    div.stButton > button:first-child {
-        background-color: #0284c7;
-        color: white;
-        border-radius: 8px;
-        border: none;
-        padding: 10px 24px;
-    }
-    div.stButton > button:first-child:hover {
-        background-color: #0369a1;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+    ruta_css = Path(__file__).parent / file_path
+    try:
+        css = ruta_css.read_text(encoding="utf-8")
+        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.warning(f"⚠️ No se encontró el archivo de estilos: {file_path}")
+
+
+cargar_css()
 
 # ---------------------------------------------------------------------------
 # Configuración de modelos y plantillas
