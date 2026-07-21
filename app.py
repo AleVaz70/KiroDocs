@@ -242,6 +242,65 @@ def generar_arquitectura(
     )
 
 
+class TodosLosModelosFallaronError(RuntimeError):
+    """Se lanza cuando el modelo principal y todos los modelos de respaldo fallan."""
+
+    def __init__(self, intentos: list[tuple[str, Exception]]):
+        self.intentos = intentos
+        super().__init__(
+            f"Todos los modelos configurados fallaron ({len(intentos)} intentos)."
+        )
+
+
+def describir_error_boto(error: Exception) -> str:
+    """Devuelve una descripción corta y legible de un error de boto3."""
+    if isinstance(error, NoCredentialsError):
+        return "credenciales de AWS no encontradas"
+    if isinstance(error, EndpointConnectionError):
+        return "no se pudo conectar con el endpoint de Bedrock"
+    if isinstance(error, ClientError):
+        codigo = error.response.get("Error", {}).get("Code", "Desconocido")
+        mensaje = error.response.get("Error", {}).get("Message", str(error))
+        return f"{codigo} - {mensaje}"
+    return str(error)
+
+
+def generar_arquitectura_con_fallback(
+    descripcion: str,
+    orden_modelos: list[tuple[str, str]],
+    region: str,
+    temperatura: float,
+    max_tokens: int,
+) -> tuple[dict, str, str, list[tuple[str, Exception]]]:
+    """
+    Intenta generar la arquitectura probando los modelos en el orden recibido.
+
+    El primer elemento de `orden_modelos` es el modelo elegido por el usuario;
+    si falla (ThrottlingException, AccessDeniedException o cualquier otro
+    error de Bedrock/boto3), se prueba automáticamente con el siguiente
+    modelo disponible, y así sucesivamente.
+
+    Devuelve: (resultado, nombre_modelo_usado, model_id_usado, intentos_fallidos)
+    """
+    intentos_fallidos: list[tuple[str, Exception]] = []
+
+    for nombre_modelo, model_id in orden_modelos:
+        try:
+            resultado = generar_arquitectura(
+                descripcion=descripcion,
+                model_id=model_id,
+                region=region,
+                temperatura=temperatura,
+                max_tokens=max_tokens,
+            )
+            return resultado, nombre_modelo, model_id, intentos_fallidos
+        except (ClientError, BotoCoreError, ValueError) as error:
+            intentos_fallidos.append((nombre_modelo, error))
+            continue
+
+    raise TodosLosModelosFallaronError(intentos_fallidos)
+
+
 # ---------------------------------------------------------------------------
 # Barra lateral: configuración de Bedrock
 # ---------------------------------------------------------------------------
@@ -304,17 +363,46 @@ with col_der:
         if not descripcion_limpia:
             st.warning("⚠️ Escribe o selecciona un requerimiento antes de generar.")
         else:
+            # Orden de intento: primero el modelo elegido por el usuario, luego
+            # el resto de MODELOS_DISPONIBLES como respaldo (en su orden original).
+            orden_modelos = [(modelo_seleccionado, MODELOS_DISPONIBLES[modelo_seleccionado])]
+            orden_modelos += [
+                (nombre, mid)
+                for nombre, mid in MODELOS_DISPONIBLES.items()
+                if nombre != modelo_seleccionado
+            ]
+
             with st.spinner("Procesando arquitectura mediante Kiro AI (Bedrock)... 🤖"):
                 try:
-                    resultado = generar_arquitectura(
-                        descripcion=descripcion_limpia,
-                        model_id=MODELOS_DISPONIBLES[modelo_seleccionado],
-                        region=region_seleccionada,
-                        temperatura=temperatura,
-                        max_tokens=max_tokens,
+                    resultado, nombre_modelo_usado, model_id_usado, intentos_fallidos = (
+                        generar_arquitectura_con_fallback(
+                            descripcion=descripcion_limpia,
+                            orden_modelos=orden_modelos,
+                            region=region_seleccionada,
+                            temperatura=temperatura,
+                            max_tokens=max_tokens,
+                        )
                     )
                     st.session_state["kirodocs_resultado"] = resultado
                     st.session_state["kirodocs_prompt"] = descripcion_limpia
+                    st.session_state["kirodocs_modelo_usado"] = nombre_modelo_usado
+
+                    if intentos_fallidos:
+                        nombre_fallido, error_fallido = intentos_fallidos[0]
+                        st.warning(
+                            f"⚠️ El modelo principal **{nombre_fallido}** falló "
+                            f"({describir_error_boto(error_fallido)}). "
+                            f"Se usó el modelo de respaldo **{nombre_modelo_usado}** "
+                            "con éxito."
+                        )
+                except TodosLosModelosFallaronError as error:
+                    st.error(
+                        "❌ No se pudo generar la arquitectura: fallaron todos los "
+                        f"modelos configurados ({len(error.intentos)} intentos)."
+                    )
+                    with st.expander("Ver detalle de cada intento"):
+                        for nombre_modelo, err in error.intentos:
+                            st.markdown(f"- **{nombre_modelo}:** {describir_error_boto(err)}")
                 except NoCredentialsError:
                     st.error(
                         "❌ No se encontraron credenciales de AWS. Configura "
@@ -326,19 +414,6 @@ with col_der:
                         "❌ No se pudo conectar con el endpoint de Bedrock. "
                         "Verifica tu conexión a internet y la región seleccionada."
                     )
-                except ClientError as error:
-                    codigo = error.response.get("Error", {}).get("Code", "Desconocido")
-                    mensaje = error.response.get("Error", {}).get("Message", str(error))
-                    if codigo == "AccessDeniedException":
-                        st.error(
-                            "❌ Acceso denegado. Tu usuario/rol de IAM no tiene "
-                            "permiso para invocar este modelo en Bedrock, o el "
-                            "modelo no está habilitado en 'Model access'."
-                        )
-                    else:
-                        st.error(f"❌ Error de AWS ({codigo}): {mensaje}")
-                except (BotoCoreError, ValueError) as error:
-                    st.error(f"❌ No se pudo generar la arquitectura: {error}")
 
     resultado = st.session_state.get("kirodocs_resultado")
     prompt_usado = st.session_state.get("kirodocs_prompt", "")
@@ -421,9 +496,12 @@ with col_der:
 
         with tab_prompt:
             st.write("#### Prompt Estructurado enviado a Kiro AI")
+            nombre_modelo_final = st.session_state.get(
+                "kirodocs_modelo_usado", modelo_seleccionado
+            )
             st.info(
-                f"Modelo utilizado: **{modelo_seleccionado}** "
-                f"(`{MODELOS_DISPONIBLES[modelo_seleccionado]}`) vía Amazon Bedrock."
+                f"Modelo utilizado: **{nombre_modelo_final}** "
+                f"(`{MODELOS_DISPONIBLES.get(nombre_modelo_final, '')}`) vía Amazon Bedrock."
             )
             st.code(SYSTEM_PROMPT, language="markdown")
             st.code(construir_prompt_usuario(prompt_usado), language="markdown")
