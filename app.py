@@ -53,9 +53,10 @@ st.markdown(
 # Configuración de modelos y plantillas
 # ---------------------------------------------------------------------------
 MODELOS_DISPONIBLES = {
-    "Claude Sonnet 5 (recomendado)": "us.anthropic.claude-sonnet-5",
-    "Claude Sonnet 4.5": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    "Claude Haiku 4.5 (rápido/económico)": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "Amazon Nova Lite (⚡ Instantáneo / Recomendado)": "amazon.nova-lite-v1:0",
+    "Amazon Nova Pro": "amazon.nova-pro-v1:0",
+    "Claude 3.5 Sonnet (Directo)": "anthropic.claude-3-5-sonnet-20240620-v1:0",
+    "Claude 3 Haiku (Rápido)": "anthropic.claude-3-haiku-20240307-v1:0"
 }
 
 REGIONES_DISPONIBLES = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
