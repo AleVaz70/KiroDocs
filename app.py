@@ -353,38 +353,38 @@ with col_der:
         )
 
         with tab_diagrama:
-    st.write("#### Diagrama de Arquitectura AWS")
-    st.info(resultado.get("resumen_ejecutivo", ""))
+            st.write("#### Diagrama de Arquitectura AWS")
+            st.info(resultado.get("resumen_ejecutivo", ""))
     
-    diagrama = resultado.get("diagrama_mermaid", "")
+            diagrama = resultado.get("diagrama_mermaid", "")
     
-    try:
-        # Intenta usar la función nativa de Streamlit
-        st.mermaid_chart(diagrama)
-        st.success("✅ Diagrama de infraestructura generado exitosamente.")
-    except Exception:
-        # Fallback 1: Renderizar con JavaScript/HTML embebido si falla la función nativa
-        try:
-            st.components.v1.html(
-                f"""
-                <div style="background-color: #0e1117; padding: 10px; border-radius: 8px;">
-                    <pre class="mermaid">
-{diagrama}
-                    </pre>
-                </div>
-                <script type="module">
-                    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-                    mermaid.initialize({{ startOnLoad: true, theme: 'dark' }});
-                </script>
-                """,
-                height=450,
-                scrolling=True
-            )
-            st.success("✅ Diagrama renderizado con el motor Mermaid JS.")
-        except Exception as e:
-            # Fallback 2: Si el código Mermaid vino corrupto, muestra el código en texto plano
-            st.error("⚠️ No se pudo renderizar el gráfico dinámico. A continuación se muestra la estructura en código:")
-            st.code(diagrama, language="mermaid")
+            try:
+                # Intenta usar la función nativa de Streamlit
+                st.mermaid_chart(diagrama)
+                st.success("✅ Diagrama de infraestructura generado exitosamente.")
+            except Exception:
+                # Fallback 1: Renderizar con JavaScript/HTML embebido si falla la función nativa
+                try:
+                     st.components.v1.html(
+                        f"""
+                        <div style="background-color: #0e1117; padding: 10px; border-radius: 8px;">
+                        <pre class="mermaid">
+                        {diagrama}
+                        </pre>
+                        </div>
+                        <script type="module">
+                            import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+                            mermaid.initialize({{ startOnLoad: true, theme: 'dark' }});
+                        </script>
+                        """,
+                        height=450,
+                        scrolling=True
+                    )
+                    st.success("✅ Diagrama renderizado con el motor Mermaid JS.")
+                except Exception as e:
+                    # Fallback 2: Si el código Mermaid vino corrupto, muestra el código en texto plano
+                    st.error("⚠️ No se pudo renderizar el gráfico dinámico. A continuación se muestra la estructura en código:")
+                    st.code(diagrama, language="mermaid")
 
             if resultado.get("servicios_aws"):
                 st.write("#### Servicios utilizados")
