@@ -365,7 +365,7 @@ with col_der:
             except Exception:
                 # Fallback 1: Renderizar con JavaScript/HTML embebido si falla la función nativa
                 try:
-                     st.components.v1.html(
+                    st.components.v1.html(
                         f"""
                         <div style="background-color: #0e1117; padding: 10px; border-radius: 8px;">
                         <pre class="mermaid">
