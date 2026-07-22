@@ -23,7 +23,7 @@ from botocore.exceptions import (
 # Configuración de la interfaz
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="KiroDocs ☁️",
+    page_title="KiroDocs",
     page_icon="☁️",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -414,7 +414,7 @@ def generar_arquitectura_con_fallback(
 # Barra lateral: configuración de Bedrock
 # ---------------------------------------------------------------------------
 with st.sidebar:
-    st.write("### ⚙️ Configuración de Bedrock")
+    st.write("### Configuración de Bedrock")
     modelo_seleccionado = st.selectbox(
         "Modelo de Amazon Bedrock",
         options=list(MODELOS_DISPONIBLES.keys()),
@@ -435,7 +435,24 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 # Encabezado principal
 # ---------------------------------------------------------------------------
-st.title("☁️ KiroDocs v1.0")
+st.title("KiroDocs")
+st.markdown(
+    """
+    <span style="
+        display:inline-block;
+        padding:0.15rem 0.65rem;
+        border-radius:999px;
+        font-size:0.75rem;
+        font-weight:600;
+        letter-spacing:0.03em;
+        color:#38bdf8;
+        background:rgba(56,189,248,0.12);
+        border:1px solid rgba(56,189,248,0.35);
+        margin-bottom:0.5rem;
+    ">v1.0</span>
+    """,
+    unsafe_allow_html=True,
+)
 st.subheader("Generador Inteligente de Arquitecturas AWS con Kiro AI (Bedrock)")
 st.write(
     "Convierte tus ideas de infraestructura en diagramas interactivos y "
@@ -447,7 +464,7 @@ st.write("---")
 col_izq, col_der = st.columns([1, 1])
 
 with col_izq:
-    st.write("### 📝 Requerimiento de Infraestructura")
+    st.write("### Requerimiento de Infraestructura")
 
     ejemplo = st.selectbox(
         "Selecciona una plantilla rápida o personaliza tu requerimiento:",
@@ -465,7 +482,7 @@ with col_izq:
     boton_generar = st.button("Generar Solución con Kiro ⚡", type="primary")
 
 with col_der:
-    st.write("### 📊 Infraestructura & Documentación")
+    st.write("### Infraestructura & Documentación")
 
     if boton_generar:
         descripcion_limpia = prompt_usuario.strip()
@@ -592,7 +609,7 @@ with col_der:
             st.write("#### Especificación Técnica (README.md)")
             st.markdown(resultado.get("readme_markdown", ""))
             if resultado.get("consideraciones_seguridad"):
-                st.write("#### 🔒 Consideraciones de seguridad")
+                st.write("#### Consideraciones de seguridad")
                 for item in resultado["consideraciones_seguridad"]:
                     st.markdown(f"- {item}")
             st.download_button(
