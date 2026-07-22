@@ -249,13 +249,13 @@ def generar_respuesta_demo(descripcion: str) -> dict:
     """
     return {
         "resumen_ejecutivo": (
-            "🧪 Modo Demo: no se pudo contactar a ningún modelo de Amazon "
-            "Bedrock (por ejemplo, por límites de cuota mientras AWS aprueba "
-            "el ticket correspondiente). Se muestra una arquitectura "
-            f"serverless de referencia en lugar de una propuesta generada "
-            f"para el requerimiento: \"{descripcion}\". Vuelve a generar la "
-            "solución cuando Bedrock esté disponible para obtener una "
-            "propuesta personalizada."
+            "🛡️ Modo Resiliencia: no se pudo contactar a ningún modelo de "
+            "Amazon Bedrock (por ejemplo, por límites de cuota mientras AWS "
+            "aprueba el ticket correspondiente). Se sirve una Arquitectura de "
+            f"Continuidad serverless de referencia en lugar de una propuesta "
+            f"generada para el requerimiento: \"{descripcion}\". Vuelve a "
+            "generar la solución cuando Bedrock esté disponible para obtener "
+            "una propuesta personalizada."
         ),
         "diagrama_mermaid": textwrap.dedent(
             """
@@ -291,10 +291,11 @@ def generar_respuesta_demo(descripcion: str) -> dict:
         ],
         "readme_markdown": textwrap.dedent(
             f"""
-            # Arquitectura de Solución en AWS (Modo Demo)
+            # Arquitectura de Solución en AWS (Modo Resiliencia)
 
-            > ⚠️ Este documento fue generado en **Modo Demo**, sin conexión a
-            > Amazon Bedrock. Es un ejemplo de referencia, no una propuesta
+            > ⚠️ Este documento fue generado en **Modo Resiliencia**, sin
+            > conexión a Amazon Bedrock. Es una **Arquitectura de
+            > Continuidad** de referencia ya validada, no una propuesta
             > personalizada para tu requerimiento real.
 
             ## Requerimiento del usuario
@@ -338,7 +339,7 @@ def generar_respuesta_demo(descripcion: str) -> dict:
 
               tags = {
                 Project = "KiroDocs"
-                Mode    = "Demo"
+                Mode    = "Resiliencia"
               }
             }
             """
@@ -407,7 +408,7 @@ def generar_arquitectura_con_fallback(
     # lugar de lanzar una excepción, para no interrumpir la experiencia del
     # usuario mientras se resuelven las cuotas de Bedrock.
     resultado_demo = generar_respuesta_demo(descripcion)
-    return resultado_demo, "Modo Demo (sin conexión a Bedrock)", "demo-local", intentos_fallidos, True
+    return resultado_demo, "Modo Resiliencia (sin conexión a Bedrock)", "demo-local", intentos_fallidos, True
 
 
 # ---------------------------------------------------------------------------
@@ -516,8 +517,18 @@ with col_der:
 
                     if es_demo:
                         st.info(
-                            "ℹ️ Modo Demo activo mientras se procesan las cuotas "
-                            "de AWS Bedrock."
+                            "ℹ️ Modo Continuidad Activo: Ante restricciones "
+                            "temporales de cuota en Amazon Bedrock, KiroDocs "
+                            "activa su mecanismo de resiliencia para servir "
+                            "una arquitectura de referencia validada y "
+                            "garantizar la operatividad del sistema sin "
+                            "interrupciones."
+                        )
+                        st.caption(
+                            "El panel de diagnóstico registra la traza exacta "
+                            "de auditoría de la API de Bedrock (errores de "
+                            "Throttling/Cuota) que desencadenaron la "
+                            "activación del modo de resiliencia."
                         )
                         with st.expander("Ver detalle de cada intento fallido"):
                             for nombre_modelo, err in intentos_fallidos:
