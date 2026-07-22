@@ -642,6 +642,6 @@ with col_der:
             st.code(construir_prompt_usuario(prompt_usado), language="markdown")
     else:
         st.info(
-            "💡 Selecciona una plantilla o escribe tu requerimiento en el "
+            "Selecciona una plantilla o escribe tu requerimiento en el "
             "panel izquierdo y haz clic en 'Generar Solución con Kiro'."
         )
