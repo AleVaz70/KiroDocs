@@ -555,7 +555,13 @@ with col_der:
                 try:
                     st.components.v1.html(
                         f"""
-                        <div style="background-color: #0e1117; padding: 10px; border-radius: 8px;">
+                        <style>
+                            html, body {{
+                                background: #0f172a;
+                                margin: 0;
+                            }}
+                        </style>
+                        <div style="background: transparent; padding: 10px; border-radius: 14px;">
                         <pre class="mermaid">
                         {diagrama}
                         </pre>
