@@ -240,14 +240,116 @@ def generar_arquitectura(
     )
 
 
-class TodosLosModelosFallaronError(RuntimeError):
-    """Se lanza cuando el modelo principal y todos los modelos de respaldo fallan."""
+def generar_respuesta_demo(descripcion: str) -> dict:
+    """
+    Arquitectura de referencia generada localmente (sin llamadas de red), que
+    se usa como último recurso cuando ningún modelo de Bedrock responde (por
+    ejemplo, por ThrottlingException mientras AWS aprueba un aumento de
+    cuotas). El contenido cumple el mismo esquema que la salida real de la
+    herramienta "generar_documentacion_arquitectura".
+    """
+    return {
+        "resumen_ejecutivo": (
+            "🧪 Modo Demo: no se pudo contactar a ningún modelo de Amazon "
+            "Bedrock (por ejemplo, por límites de cuota mientras AWS aprueba "
+            "el ticket correspondiente). Se muestra una arquitectura "
+            f"serverless de referencia en lugar de una propuesta generada "
+            f"para el requerimiento: \"{descripcion}\". Vuelve a generar la "
+            "solución cuando Bedrock esté disponible para obtener una "
+            "propuesta personalizada."
+        ),
+        "diagrama_mermaid": textwrap.dedent(
+            """
+            graph TD
+                Cliente[Cliente / Front] -->|HTTPS| API[AWS API Gateway]
+                API -->|Trigger| Lambda[AWS Lambda Function]
+                Lambda -->|CRUD| DB[(Amazon DynamoDB)]
+                Lambda -->|Logs| CloudWatch[Amazon CloudWatch]
 
-    def __init__(self, intentos: list[tuple[str, Exception]]):
-        self.intentos = intentos
-        super().__init__(
-            f"Todos los modelos configurados fallaron ({len(intentos)} intentos)."
-        )
+                style API fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
+                style Lambda fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
+                style DB fill:#3f51b5,stroke:#333,stroke-width:2px,color:#fff
+                style CloudWatch fill:#e91e63,stroke:#333,stroke-width:2px,color:#fff
+            """
+        ).strip(),
+        "servicios_aws": [
+            {
+                "nombre": "AWS API Gateway",
+                "descripcion": "Gestión de endpoints HTTP/REST y enrutamiento seguro.",
+            },
+            {
+                "nombre": "AWS Lambda",
+                "descripcion": "Ejecución de lógica de negocio en entorno Serverless.",
+            },
+            {
+                "nombre": "Amazon DynamoDB",
+                "descripcion": "Almacenamiento NoSQL gestionado de alta disponibilidad.",
+            },
+            {
+                "nombre": "Amazon CloudWatch",
+                "descripcion": "Monitoreo y centralización de logs de ejecución.",
+            },
+        ],
+        "readme_markdown": textwrap.dedent(
+            f"""
+            # Arquitectura de Solución en AWS (Modo Demo)
+
+            > ⚠️ Este documento fue generado en **Modo Demo**, sin conexión a
+            > Amazon Bedrock. Es un ejemplo de referencia, no una propuesta
+            > personalizada para tu requerimiento real.
+
+            ## Requerimiento del usuario
+            > "{descripcion}"
+
+            ## Componentes y servicios
+            - **AWS API Gateway:** gestión de endpoints HTTP/REST y enrutamiento seguro.
+            - **AWS Lambda:** ejecución de lógica de negocio en entorno Serverless.
+            - **Amazon DynamoDB:** almacenamiento NoSQL gestionado de alta disponibilidad.
+            - **Amazon CloudWatch:** monitoreo y centralización de logs de ejecución.
+
+            ## Patrones de diseño aplicados
+            - Alta disponibilidad y escalabilidad auto-gestionada.
+            - Modelo de seguridad con principio de mínimo privilegio (IAM).
+            """
+        ).strip(),
+        "terraform_code": textwrap.dedent(
+            """
+            terraform {
+              required_providers {
+                aws = {
+                  source  = "hashicorp/aws"
+                  version = "~> 5.0"
+                }
+              }
+            }
+
+            provider "aws" {
+              region = "us-east-1"
+            }
+
+            resource "aws_dynamodb_table" "main_db" {
+              name         = "KiroDocsDemoTable"
+              billing_mode = "PAY_PER_REQUEST"
+              hash_key     = "id"
+
+              attribute {
+                name = "id"
+                type = "S"
+              }
+
+              tags = {
+                Project = "KiroDocs"
+                Mode    = "Demo"
+              }
+            }
+            """
+        ).strip(),
+        "consideraciones_seguridad": [
+            "Aplicar el principio de mínimo privilegio en los roles IAM de Lambda.",
+            "Habilitar cifrado en reposo (KMS) en la tabla DynamoDB.",
+            "Restringir el acceso al API Gateway mediante un autorizador (Cognito o Lambda Authorizer).",
+        ],
+    }
 
 
 def describir_error_boto(error: Exception) -> str:
@@ -269,7 +371,7 @@ def generar_arquitectura_con_fallback(
     region: str,
     temperatura: float,
     max_tokens: int,
-) -> tuple[dict, str, str, list[tuple[str, Exception]]]:
+) -> tuple[dict, str, str, list[tuple[str, Exception]], bool]:
     """
     Intenta generar la arquitectura probando los modelos en el orden recibido.
 
@@ -278,7 +380,13 @@ def generar_arquitectura_con_fallback(
     error de Bedrock/boto3), se prueba automáticamente con el siguiente
     modelo disponible, y así sucesivamente.
 
-    Devuelve: (resultado, nombre_modelo_usado, model_id_usado, intentos_fallidos)
+    Si TODOS los modelos fallan (por ejemplo, mientras AWS aprueba un
+    aumento de cuotas de Bedrock), en lugar de interrumpir la app se
+    devuelve una respuesta Demo de referencia para que el usuario pueda
+    seguir viendo la interfaz funcionando.
+
+    Devuelve: (resultado, nombre_modelo_usado, model_id_usado,
+    intentos_fallidos, es_demo)
     """
     intentos_fallidos: list[tuple[str, Exception]] = []
 
@@ -291,12 +399,16 @@ def generar_arquitectura_con_fallback(
                 temperatura=temperatura,
                 max_tokens=max_tokens,
             )
-            return resultado, nombre_modelo, model_id, intentos_fallidos
+            return resultado, nombre_modelo, model_id, intentos_fallidos, False
         except (ClientError, BotoCoreError, ValueError) as error:
             intentos_fallidos.append((nombre_modelo, error))
             continue
 
-    raise TodosLosModelosFallaronError(intentos_fallidos)
+    # Todos los modelos fallaron: se devuelve una respuesta Demo válida en
+    # lugar de lanzar una excepción, para no interrumpir la experiencia del
+    # usuario mientras se resuelven las cuotas de Bedrock.
+    resultado_demo = generar_respuesta_demo(descripcion)
+    return resultado_demo, "Modo Demo (sin conexión a Bedrock)", "demo-local", intentos_fallidos, True
 
 
 # ---------------------------------------------------------------------------
@@ -372,7 +484,7 @@ with col_der:
 
             with st.spinner("Procesando arquitectura mediante Kiro AI (Bedrock)... 🤖"):
                 try:
-                    resultado, nombre_modelo_usado, model_id_usado, intentos_fallidos = (
+                    resultado, nombre_modelo_usado, model_id_usado, intentos_fallidos, es_demo = (
                         generar_arquitectura_con_fallback(
                             descripcion=descripcion_limpia,
                             orden_modelos=orden_modelos,
@@ -384,8 +496,19 @@ with col_der:
                     st.session_state["kirodocs_resultado"] = resultado
                     st.session_state["kirodocs_prompt"] = descripcion_limpia
                     st.session_state["kirodocs_modelo_usado"] = nombre_modelo_usado
+                    st.session_state["kirodocs_es_demo"] = es_demo
 
-                    if intentos_fallidos:
+                    if es_demo:
+                        st.info(
+                            "ℹ️ Modo Demo activo mientras se procesan las cuotas "
+                            "de AWS Bedrock."
+                        )
+                        with st.expander("Ver detalle de cada intento fallido"):
+                            for nombre_modelo, err in intentos_fallidos:
+                                st.markdown(
+                                    f"- **{nombre_modelo}:** {describir_error_boto(err)}"
+                                )
+                    elif intentos_fallidos:
                         nombre_fallido, error_fallido = intentos_fallidos[0]
                         st.warning(
                             f"⚠️ El modelo principal **{nombre_fallido}** falló "
@@ -393,14 +516,6 @@ with col_der:
                             f"Se usó el modelo de respaldo **{nombre_modelo_usado}** "
                             "con éxito."
                         )
-                except TodosLosModelosFallaronError as error:
-                    st.error(
-                        "❌ No se pudo generar la arquitectura: fallaron todos los "
-                        f"modelos configurados ({len(error.intentos)} intentos)."
-                    )
-                    with st.expander("Ver detalle de cada intento"):
-                        for nombre_modelo, err in error.intentos:
-                            st.markdown(f"- **{nombre_modelo}:** {describir_error_boto(err)}")
                 except NoCredentialsError:
                     st.error(
                         "❌ No se encontraron credenciales de AWS. Configura "
