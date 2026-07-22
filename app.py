@@ -56,7 +56,7 @@ MODELOS_DISPONIBLES = {
     "Claude 3 Haiku": "anthropic.claude-3-haiku-20240307-v1:0"
 }
 
-REGIONES_DISPONIBLES = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+REGIONES_DISPONIBLES = ["us-east-2", "us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
 
 PLANTILLAS = {
     "Personalizado": "",
