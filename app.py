@@ -533,10 +533,10 @@ with col_der:
     if resultado:
         tab_diagrama, tab_docs, tab_codigo, tab_prompt = st.tabs(
             [
-                "📊 Diagrama Interactivo",
-                "📄 Documentación (README)",
-                "⚙️ Terraform (IaC)",
-                "🤖 Prompt de Kiro",
+                "Diagrama Interactivo",
+                "Documentación (README)",
+                "Terraform (IaC)",
+                "Prompt de Kiro",
             ]
         )
 
