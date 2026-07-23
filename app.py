@@ -249,14 +249,14 @@ def generar_respuesta_demo(descripcion: str) -> dict:
     """
     return {
         "resumen_ejecutivo": (
-            "🛡️ **Modo de Resiliencia**\n\n"
+            "**Modo de Resiliencia**\n\n"
             "No fue posible contactar a ningún modelo de Amazon Bedrock "
             "debido a restricciones temporales del servicio (como límites "
             "de cuota, throttling o disponibilidad de acceso). KiroDocs "
-            "sirve automáticamente una Arquitectura de Continuidad validada "
-            "para mantener la operatividad de la aplicación. Cuando "
-            "Bedrock vuelva a estar disponible, podrás regenerar una "
-            "propuesta completamente personalizada."
+            "proporciona automáticamente una Arquitectura de Continuidad "
+            "validada para mantener la continuidad del servicio. Cuando "
+            "Bedrock vuelva a estar disponible, podrás generar nuevamente "
+            "una propuesta personalizada basada en tu requerimiento."
         ),
         "diagrama_mermaid": textwrap.dedent(
             """
@@ -518,17 +518,17 @@ with col_der:
 
                     if es_demo:
                         st.info(
-                            "ℹ️ Modo Continuidad Activo: Ante restricciones "
+                            "Modo Continuidad Activo: Ante restricciones "
                             "temporales de cuota en Amazon Bedrock, KiroDocs "
-                            "activa su mecanismo de resiliencia para servir "
-                            "una arquitectura de referencia validada y "
-                            "garantizar la continuidad del servicio."
+                            "activa automáticamente su mecanismo de "
+                            "resiliencia para proporcionar una arquitectura "
+                            "de referencia validada y garantizar la "
+                            "continuidad del servicio."
                         )
                         st.caption(
-                            "El panel de diagnóstico registra la traza exacta "
-                            "de auditoría de la API de Bedrock (errores de "
-                            "Throttling/Cuota) que desencadenaron la "
-                            "activación del modo de resiliencia."
+                            "El panel de diagnóstico registra la traza de "
+                            "auditoría de las respuestas de Amazon Bedrock "
+                            "que activaron el mecanismo de resiliencia."
                         )
                         with st.expander("Ver auditoría de resiliencia"):
                             for nombre_modelo, err in intentos_fallidos:
