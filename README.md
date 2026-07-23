@@ -41,12 +41,12 @@ Le describes tu necesidad en lenguaje natural — por ejemplo, *"necesito una AP
 Todo esto generado por Amazon Bedrock a través de la API Converse de `boto3`, con salida forzada mediante *Tool Use* para garantizar que cada artefacto llegue completo y bien formado, sin necesidad de revisión manual del formato.
 
 ```
-Requerimiento              AWS Bedrock                    Salida generada
-(Lenguaje Natural)   ──►   (Converse API + Tool Use)  ──► ┌──────────────────────┐
-                                                            │ Diagrama Mermaid     │
-                                                            │ README Técnico       │
-                                                            │ Código Terraform     │
-                                                            └──────────────────────┘
+Requerimiento                  AWS Bedrock                  Salida generada
+(Lenguaje Natural)  ───►  (Converse API + Tool Use)  ───►  ┌────────────────────────┐
+                                                           │  | Diagrama Mermaid    │
+                                                           │  | README Técnico      │
+                                                           │  | Código Terraform    │
+                                                           └────────────────────────┘
 ```
 
 ---
