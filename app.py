@@ -244,7 +244,7 @@ def generar_respuesta_demo(descripcion: str) -> dict:
     Arquitectura de referencia generada localmente (sin llamadas de red), que
     se usa como último recurso cuando ningún modelo de Bedrock responde (por
     ejemplo, por ThrottlingException mientras AWS aprueba un aumento de
-    cuotas). El contenido cumple el mismo esquema que la salida real de la
+    cuota). El contenido cumple el mismo esquema que la salida real de la
     herramienta "generar_documentacion_arquitectura".
     """
     return {
@@ -383,7 +383,7 @@ def generar_arquitectura_con_fallback(
     modelo disponible, y así sucesivamente.
 
     Si TODOS los modelos fallan (por ejemplo, mientras AWS aprueba un
-    aumento de cuotas de Bedrock), en lugar de interrumpir la app se
+    aumento de cuota de Bedrock), en lugar de interrumpir la app se
     devuelve una respuesta Demo de referencia para que el usuario pueda
     seguir viendo la interfaz funcionando.
 
@@ -408,7 +408,7 @@ def generar_arquitectura_con_fallback(
 
     # Todos los modelos fallaron: se devuelve una respuesta Demo válida en
     # lugar de lanzar una excepción, para no interrumpir la experiencia del
-    # usuario mientras se resuelven las cuotas de Bedrock.
+    # usuario mientras se resuelve la cuota de Bedrock.
     resultado_demo = generar_respuesta_demo(descripcion)
     return resultado_demo, "Modo Resiliencia (sin conexión a Bedrock)", "demo-local", intentos_fallidos, True
 

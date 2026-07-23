@@ -212,6 +212,8 @@ Cada generación de arquitectura se resuelve con una sola llamada a la **Convers
 KiroDocs/
 ├── app.py                     # Aplicación Streamlit principal (UI + Amazon Bedrock + Mecanismo de Resiliencia)
 ├── styles.css                 # Estilos AWS Dark / Neón (glassmorphism, pill tabs, glow)
+├── docs/                      # Capturas y recursos gráficos de la documentación
+│   └── kirodocs-main.png      # Captura de pantalla principal de la aplicación
 ├── listar_modelos.py           # Script de diagnóstico: lista modelos activos e invocables en Bedrock
 ├── requirements.txt            # Dependencias Python (streamlit, boto3)
 ├── skills-lock.json             # Registro de versiones/hashes de las Agent Skills instaladas
