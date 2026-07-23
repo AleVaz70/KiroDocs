@@ -97,9 +97,17 @@ TOOL_SPEC = {
                     "resumen_ejecutivo": {
                         "type": "string",
                         "description": (
-                            "Resumen breve (3-5 líneas) de la solución propuesta "
-                            "y de cualquier decisión de arquitecto tomada ante "
-                            "ambigüedad del requerimiento."
+                            "Resumen breve (3-5 líneas) de la solución "
+                            "propuesta, seguido OBLIGATORIAMENTE de una "
+                            "subsección titulada '### Decisiones de Diseño' "
+                            "que justifique brevemente, en formato de lista, "
+                            "por qué se eligió cada servicio principal de la "
+                            "arquitectura (ej. 'AWS Lambda: para eliminar "
+                            "costos de compute inactivo', 'DynamoDB: por "
+                            "latencia en milisegundos y escalabilidad "
+                            "automática'). Incluye también cualquier decisión "
+                            "de arquitecto tomada ante ambigüedad del "
+                            "requerimiento."
                         ),
                     },
                     "diagrama_mermaid": {
@@ -204,6 +212,15 @@ SYSTEM_PROMPT = textwrap.dedent(
     - Si el requerimiento del usuario es ambiguo, toma decisiones de
       arquitecto senior razonables y documenta esas decisiones en
       'resumen_ejecutivo'.
+    - El campo 'resumen_ejecutivo' SIEMPRE debe incluir, después del resumen
+      inicial, una subsección titulada exactamente "### Decisiones de
+      Diseño" (formato Markdown). En esa subsección, justifica en una lista
+      con viñetas por qué elegiste cada servicio principal de la
+      arquitectura, en una frase breve y concreta (ej. "AWS Lambda: para
+      eliminar costos de compute inactivo y escalar automáticamente con la
+      demanda.", "Amazon DynamoDB: por latencia en milisegundos y
+      escalabilidad automática sin gestión de servidores."). No omitas esta
+      subsección bajo ninguna circunstancia.
     """
 ).strip()
 
@@ -280,7 +297,20 @@ def generar_respuesta_demo(descripcion: str) -> dict:
             "validada para que el flujo de trabajo pueda continuar sin "
             "interrupciones. Cuando Bedrock vuelva a estar disponible, "
             "podrás generar nuevamente una propuesta personalizada basada "
-            "en tu requerimiento."
+            "en tu requerimiento.\n\n"
+            "### Decisiones de Diseño\n\n"
+            "- **Amazon API Gateway:** expone un endpoint HTTP administrado "
+            "con autenticación, throttling y monitoreo integrados, sin "
+            "necesidad de gestionar servidores propios.\n"
+            "- **AWS Lambda:** elimina costos de compute inactivo (modelo "
+            "pay-per-use) y escala automáticamente con la demanda de "
+            "solicitudes.\n"
+            "- **Amazon DynamoDB:** ofrece latencia de un solo dígito en "
+            "milisegundos y escalabilidad automática, ideal para cargas de "
+            "trabajo serverless impredecibles.\n"
+            "- **Amazon Bedrock:** provee acceso unificado a modelos "
+            "fundacionales (Nova, Claude) mediante la Converse API, evitando "
+            "gestionar infraestructura de inferencia propia."
         ),
         "diagrama_mermaid": textwrap.dedent(
             """
