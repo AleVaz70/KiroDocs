@@ -254,9 +254,10 @@ def generar_respuesta_demo(descripcion: str) -> dict:
             "debido a restricciones temporales del servicio (como límites "
             "de cuota, throttling o disponibilidad de acceso). KiroDocs "
             "proporciona automáticamente una Arquitectura de Continuidad "
-            "validada para mantener la continuidad del servicio. Cuando "
-            "Bedrock vuelva a estar disponible, podrás generar nuevamente "
-            "una propuesta personalizada basada en tu requerimiento."
+            "validada para que el flujo de trabajo pueda continuar sin "
+            "interrupciones. Cuando Bedrock vuelva a estar disponible, "
+            "podrás generar nuevamente una propuesta personalizada basada "
+            "en tu requerimiento."
         ),
         "diagrama_mermaid": textwrap.dedent(
             """
@@ -500,7 +501,7 @@ with col_der:
                 if nombre != modelo_seleccionado
             ]
 
-            with st.spinner("Procesando arquitectura mediante Kiro AI (Bedrock)... 🤖"):
+            with st.spinner("Procesando arquitectura mediante Kiro AI (Bedrock)..."):
                 try:
                     resultado, nombre_modelo_usado, model_id_usado, intentos_fallidos, es_demo = (
                         generar_arquitectura_con_fallback(
