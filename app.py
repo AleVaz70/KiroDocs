@@ -249,13 +249,14 @@ def generar_respuesta_demo(descripcion: str) -> dict:
     """
     return {
         "resumen_ejecutivo": (
-            "Modo Resiliencia: no fue posible contactar a ningún modelo de "
-            "Amazon Bedrock debido a restricciones temporales del servicio "
-            "(como límites de cuota, throttling o disponibilidad de "
-            "acceso). KiroDocs sirve automáticamente una Arquitectura de "
-            "Continuidad validada para mantener la operatividad de la "
-            "aplicación. Cuando Bedrock vuelva a estar disponible, podrás "
-            "regenerar una propuesta completamente personalizada."
+            "🛡️ **Modo de Resiliencia**\n\n"
+            "No fue posible contactar a ningún modelo de Amazon Bedrock "
+            "debido a restricciones temporales del servicio (como límites "
+            "de cuota, throttling o disponibilidad de acceso). KiroDocs "
+            "sirve automáticamente una Arquitectura de Continuidad validada "
+            "para mantener la operatividad de la aplicación. Cuando "
+            "Bedrock vuelva a estar disponible, podrás regenerar una "
+            "propuesta completamente personalizada."
         ),
         "diagrama_mermaid": textwrap.dedent(
             """
@@ -521,8 +522,7 @@ with col_der:
                             "temporales de cuota en Amazon Bedrock, KiroDocs "
                             "activa su mecanismo de resiliencia para servir "
                             "una arquitectura de referencia validada y "
-                            "garantizar la operatividad del sistema sin "
-                            "interrupciones."
+                            "garantizar la continuidad del servicio."
                         )
                         st.caption(
                             "El panel de diagnóstico registra la traza exacta "
