@@ -249,13 +249,13 @@ def generar_respuesta_demo(descripcion: str) -> dict:
     """
     return {
         "resumen_ejecutivo": (
-            "🛡️ Modo Resiliencia: no se pudo contactar a ningún modelo de "
-            "Amazon Bedrock (por ejemplo, por límites de cuota mientras AWS "
-            "aprueba el ticket correspondiente). Se sirve una Arquitectura de "
-            f"Continuidad serverless de referencia en lugar de una propuesta "
-            f"generada para el requerimiento: \"{descripcion}\". Vuelve a "
-            "generar la solución cuando Bedrock esté disponible para obtener "
-            "una propuesta personalizada."
+            "Modo Resiliencia: no fue posible contactar a ningún modelo de "
+            "Amazon Bedrock debido a restricciones temporales del servicio "
+            "(como límites de cuota, throttling o disponibilidad de "
+            "acceso). KiroDocs sirve automáticamente una Arquitectura de "
+            "Continuidad validada para mantener la operatividad de la "
+            "aplicación. Cuando Bedrock vuelva a estar disponible, podrás "
+            "regenerar una propuesta completamente personalizada."
         ),
         "diagrama_mermaid": textwrap.dedent(
             """
@@ -530,7 +530,7 @@ with col_der:
                             "Throttling/Cuota) que desencadenaron la "
                             "activación del modo de resiliencia."
                         )
-                        with st.expander("Ver detalle de cada intento fallido"):
+                        with st.expander("Ver auditoría de resiliencia"):
                             for nombre_modelo, err in intentos_fallidos:
                                 st.markdown(
                                     f"- **{nombre_modelo}:** {describir_error_boto(err)}"
