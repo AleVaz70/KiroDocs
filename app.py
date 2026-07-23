@@ -8,6 +8,7 @@ Mermaid.js, documentación README y código Terraform.
 """
 
 import textwrap
+import time
 from pathlib import Path
 
 import boto3
@@ -106,7 +107,15 @@ TOOL_SPEC = {
                         "description": (
                             "Diagrama en sintaxis válida de Mermaid.js (graph TD "
                             "o graph LR), sin bloques ``` y sin tildes ni "
-                            "espacios en los IDs de los nodos."
+                            "espacios en los IDs de los nodos. Debe organizar "
+                            "los componentes en subgrafos por capa de "
+                            "arquitectura AWS (ej. subgraph Cloud [\"Nube "
+                            "AWS\"], subgraph Serverless [\"Capa "
+                            "Serverless\"]), usar etiquetas de nodo con "
+                            "nombres limpios y descriptivos (ej. [API "
+                            "Gateway], [Lambda Function], [DynamoDB], "
+                            "[Amazon Bedrock]) y aplicar directivas 'style' "
+                            "con colores AWS para cada nodo."
                         ),
                     },
                     "servicios_aws": {
@@ -169,6 +178,20 @@ SYSTEM_PROMPT = textwrap.dedent(
       No respondas con texto libre fuera de la herramienta.
     - El diagrama debe usar sintaxis 100% válida de Mermaid.js, sin bloques de
       código Markdown (sin ```), y usando IDs de nodo sin espacios ni tildes.
+    - El diagrama debe agrupar los componentes en subgrafos ("subgraph")
+      organizados por capa de red o función dentro de AWS, con un subgrafo
+      contenedor general (ej. subgraph Cloud ["Nube AWS"]) y subgrafos
+      internos por capa (ej. subgraph Serverless ["Capa Serverless"],
+      subgraph Data ["Capa de Datos"], subgraph AI ["Capa de IA"]).
+    - Cada etiqueta de nodo debe usar un nombre limpio y descriptivo del
+      servicio, sin emojis ni íconos Unicode (ej. [API Gateway],
+      [Lambda Function], [DynamoDB], [Amazon Bedrock], [CloudWatch],
+      [IAM Role]).
+    - Cada nodo debe tener una directiva "style" con colores limpios y
+      consistentes con la paleta de AWS (naranja #FF9900 para compute/
+      integración, azul marino #232F3E para bordes, azul #3B48CC para bases
+      de datos, rosado #E7157B para observabilidad), usando texto en blanco
+      para buena legibilidad.
     - El código Terraform debe ser funcional, usar el provider "aws" (~> 5.0),
       incluir nombres de recursos descriptivos, variables cuando aplique y
       etiquetas (tags) básicas.
@@ -262,15 +285,31 @@ def generar_respuesta_demo(descripcion: str) -> dict:
         "diagrama_mermaid": textwrap.dedent(
             """
             graph TD
-                Cliente[Cliente / Front] -->|HTTPS| API[AWS API Gateway]
-                API -->|Trigger| Lambda[AWS Lambda Function]
-                Lambda -->|CRUD| DB[(Amazon DynamoDB)]
-                Lambda -->|Logs| CloudWatch[Amazon CloudWatch]
+                Cliente[Cliente / Front]
 
-                style API fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
-                style Lambda fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
-                style DB fill:#3f51b5,stroke:#333,stroke-width:2px,color:#fff
-                style CloudWatch fill:#e91e63,stroke:#333,stroke-width:2px,color:#fff
+                subgraph Cloud ["Nube AWS"]
+                    subgraph Serverless ["Capa Serverless"]
+                        API[API Gateway]
+                        Lambda[Lambda Function]
+                    end
+                    subgraph Data ["Capa de Datos"]
+                        DB[(DynamoDB)]
+                    end
+                    subgraph Observability ["Observabilidad"]
+                        CloudWatch[CloudWatch]
+                    end
+                end
+
+                Cliente -->|HTTPS| API
+                API -->|Trigger| Lambda
+                Lambda -->|CRUD| DB
+                Lambda -->|Logs| CloudWatch
+
+                style Cliente fill:#232F3E,stroke:#FF9900,stroke-width:2px,color:#fff
+                style API fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#fff
+                style Lambda fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#fff
+                style DB fill:#3B48CC,stroke:#232F3E,stroke-width:2px,color:#fff
+                style CloudWatch fill:#E7157B,stroke:#232F3E,stroke-width:2px,color:#fff
             """
         ).strip(),
         "servicios_aws": [
@@ -503,6 +542,10 @@ with col_der:
 
             with st.spinner("Procesando arquitectura mediante Kiro AI (Bedrock)..."):
                 try:
+                    # Medición de latencia: cubre tanto la invocación normal a
+                    # Bedrock como la cadena de reintentos y, si aplica, la
+                    # activación del Modo de Continuidad del Servicio.
+                    inicio = time.time()
                     resultado, nombre_modelo_usado, model_id_usado, intentos_fallidos, es_demo = (
                         generar_arquitectura_con_fallback(
                             descripcion=descripcion_limpia,
@@ -512,10 +555,15 @@ with col_der:
                             max_tokens=max_tokens,
                         )
                     )
+                    fin = time.time()
+                    latencia_segundos = fin - inicio
+
                     st.session_state["kirodocs_resultado"] = resultado
                     st.session_state["kirodocs_prompt"] = descripcion_limpia
                     st.session_state["kirodocs_modelo_usado"] = nombre_modelo_usado
                     st.session_state["kirodocs_es_demo"] = es_demo
+                    st.session_state["kirodocs_latencia"] = latencia_segundos
+                    st.session_state["kirodocs_region_usada"] = region_seleccionada
 
                     if es_demo:
                         st.info(
@@ -560,6 +608,37 @@ with col_der:
     prompt_usado = st.session_state.get("kirodocs_prompt", "")
 
     if resultado:
+        nombre_modelo_metrica = st.session_state.get(
+            "kirodocs_modelo_usado", modelo_seleccionado
+        )
+        latencia_metrica = st.session_state.get("kirodocs_latencia")
+        region_metrica = st.session_state.get(
+            "kirodocs_region_usada", region_seleccionada
+        )
+        if latencia_metrica is not None:
+            st.markdown(
+                f"""
+                <div style="
+                    display:inline-block;
+                    padding:0.5rem 1.1rem;
+                    border-radius:999px;
+                    font-size:0.85rem;
+                    font-weight:500;
+                    color:#f1f5f9;
+                    background:rgba(56,189,248,0.10);
+                    border:1px solid rgba(56,189,248,0.35);
+                    margin-bottom:0.75rem;
+                ">
+                    <strong>Tiempo de generación:</strong> {latencia_metrica:.2f}s
+                    &nbsp;|&nbsp;
+                    <strong>Modelo activo:</strong> {nombre_modelo_metrica}
+                    &nbsp;|&nbsp;
+                    <strong>Región:</strong> {region_metrica}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
         tab_diagrama, tab_docs, tab_codigo, tab_prompt = st.tabs(
             [
                 "Diagrama Interactivo",
