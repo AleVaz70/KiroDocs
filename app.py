@@ -519,7 +519,7 @@ with col_der:
 
                     if es_demo:
                         st.info(
-                            "Modo Continuidad Activo: Ante restricciones "
+                            "Modo de Continuidad Activo: Ante restricciones "
                             "temporales de cuota en Amazon Bedrock, KiroDocs "
                             "activa automáticamente su mecanismo de "
                             "resiliencia para proporcionar una arquitectura "
