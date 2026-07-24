@@ -871,7 +871,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.subheader("Generador Inteligente de Arquitecturas AWS con Kiro AI (Bedrock)")
+st.subheader("Agente Inteligente de Arquitectura AWS con Kiro AI (Amazon Bedrock)")
 st.write(
     "Convierte tus ideas de infraestructura en diagramas interactivos y "
     "documentación técnica instantánea."
@@ -1168,6 +1168,11 @@ with col_der:
             st.code(construir_prompt_usuario(prompt_usado), language="markdown")
     else:
         st.info(
-            "Selecciona una plantilla o escribe tu requerimiento en el "
-            "panel izquierdo y haz clic en 'Generar Solución con Kiro'."
+            """
+**Esperando tu requerimiento de infraestructura**
+
+Describe la infraestructura que necesitas en el panel de la izquierda o selecciona una plantilla para comenzar.
+
+Aquí se mostrarán la propuesta de arquitectura, el diagrama Mermaid, el código Terraform y el análisis de seguridad generados por KiroDocs.
+"""
         )
