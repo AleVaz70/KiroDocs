@@ -20,7 +20,7 @@
 *Interfaz principal de KiroDocs:*
 
 <p align="center">
-  <img src="docs/kirodocs-main.png" alt="Interfaz Principal de KiroDocs" width="100%" />
+  <img src="docs/kirodocs-main.png" alt="Interfaz Principal de KiroDocs" width="85%" />
 </p>
 
 > *Pantalla principal de KiroDocs, donde el usuario configura el modelo, la región de AWS y describe el requerimiento de infraestructura antes de generar la arquitectura.*
@@ -35,7 +35,7 @@ Le describes tu necesidad en lenguaje natural — por ejemplo, *"necesito una AP
 
 - Un **diagrama de arquitectura** interactivo en sintaxis Mermaid.js.
 - Un **resumen ejecutivo** con las decisiones de arquitecto tomadas.
-- **Código Terraform** funcional. **Infraestructura generada automáticamente, lista para revisión y adaptación.**
+- **Código Terraform generado automáticamente, listo para ser revisado, adaptado y desplegado.**
 - La **trazabilidad completa del prompt** enviado al modelo de IA, para auditoría.
 
 Todo esto generado por Amazon Bedrock a través de la API Converse de `boto3`, con salida forzada mediante *Tool Use* para garantizar que cada artefacto llegue completo y bien formado, sin necesidad de revisión manual del formato.
@@ -55,7 +55,7 @@ Requerimiento                  AWS Bedrock                  Salida generada
 
 - **Diagramas Interactivos:** Generación en tiempo real en sintaxis Mermaid.js renderizada directamente en la UI.
 - **Especificación Técnica Completa:** Documentación técnica en Markdown lista para equipos de ingeniería.
-- **Infraestructura como Código (IaC):** Código Terraform funcional (`provider "aws"`). **Infraestructura generada automáticamente, lista para revisión y adaptación.**
+- **Infraestructura como Código (IaC):** **Código Terraform generado automáticamente, listo para ser revisado, adaptado y desplegado.** (`provider "aws"`).
 - **Generación mediante Bedrock:** Invocación avanzada de Amazon Bedrock a través de la Converse API con *Tool Use*.
 - **Mecanismo de Resiliencia:** Continuidad del servicio garantizada ante restricciones temporales de cuota (`ThrottlingException`).
 - **Auditoría y Observabilidad:** Panel de trazabilidad de llamadas a Bedrock y prompts estructurados en tiempo real.
@@ -88,7 +88,7 @@ Cada solicitud generada por KiroDocs produce cuatro artefactos coherentes entre 
 
 - **Diagramas visuales interactivos** en sintaxis [Mermaid.js](https://mermaid.js.org/), renderizados directamente en la interfaz.
 - **Documentación técnica detallada** en formato Markdown (README de la solución), con los servicios utilizados y las decisiones de arquitecto tomadas.
-- **Código de Infraestructura como Código (IaC) en Terraform**. **Infraestructura generada automáticamente, lista para revisión y adaptación.**
+- **Código de Infraestructura como Código (IaC) en Terraform**. **Código Terraform generado automáticamente, listo para ser revisado, adaptado y desplegado.**
 - **Trazabilidad completa del Prompt estructurado** enviado al modelo, incluyendo el prompt de sistema y el prompt de usuario, para auditoría y reproducibilidad.
 
 El objetivo de KiroDocs no es solo generar texto plausible, sino garantizar una **salida estructurada y consistente** en cada ejecución, algo que se logra forzando al modelo de lenguaje a responder mediante `Tool Use` (function calling) en vez de texto libre — de esa forma, el diagrama, el README y el Terraform vienen siempre completos y bien formados, sin necesidad de parsear texto ambiguo.
@@ -176,8 +176,8 @@ La función `generar_arquitectura_con_fallback()` implementa esta cadena:
 1. **Intento primario**: se invoca el modelo elegido por el usuario en el panel lateral.
 2. **Reintento automático entre modelos**: si el modelo primario falla por cualquier excepción de `ClientError`, `BotoCoreError` o `ValueError` (respuesta mal formada), KiroDocs prueba automáticamente con el siguiente modelo disponible en `MODELOS_DISPONIBLES`, sin exponer un error crudo al usuario.
 3. **Modo de Continuidad del Servicio**: si **todos** los modelos configurados fallan (el escenario típico de una cuenta nueva de AWS esperando la aprobación de un ticket de aumento de cuota), la aplicación **no colapsa ni interrumpe la experiencia del usuario**. En su lugar:
-   - Genera localmente, sin llamadas de red, una **Arquitectura de Continuidad** (API Gateway + Lambda + DynamoDB + CloudWatch) con el mismo esquema estructurado que produciría Bedrock. **Infraestructura generada automáticamente, lista para revisión y adaptación.**
-   - Muestra el aviso: *"Modo de Continuidad Activo: Ante restricciones temporales de cuota en Amazon Bedrock, KiroDocs activa automáticamente su mecanismo de resiliencia para proporcionar una arquitectura de referencia y garantizar la continuidad del servicio."* **Infraestructura generada automáticamente, lista para revisión y adaptación.**
+   - Genera localmente, sin llamadas de red, una **Arquitectura de Continuidad** (API Gateway + Lambda + DynamoDB + CloudWatch) con el mismo esquema estructurado que produciría Bedrock. **Código Terraform generado automáticamente, listo para ser revisado, adaptado y desplegado.**
+   - Muestra el aviso: *"Modo de Continuidad Activo: Ante restricciones temporales de cuota en Amazon Bedrock, KiroDocs activa automáticamente su mecanismo de resiliencia para proporcionar una arquitectura de referencia y garantizar la continuidad del servicio."*
    - Despliega un **panel de auditoría de resiliencia** expandible, con la traza exacta de cada intento fallido: modelo evaluado y código/mensaje de error de AWS, permitiendo distinguir de inmediato si el problema es de cuota, de permisos IAM o de conectividad.
 
 Este diseño garantiza que KiroDocs **siempre tiene algo funcional que mostrar**, incluso si las credenciales de AWS del entorno todavía no tienen acceso aprobado a los modelos de Bedrock — una situación común en cuentas recién creadas para un hackathon.
@@ -209,8 +209,16 @@ Cada generación de arquitectura se resuelve con una sola llamada a la **Convers
 1. **Entrada de requerimiento:** El usuario describe la infraestructura en lenguaje natural y ajusta parámetros (modelo, región, temperatura).
 2. **Invocación estructurada:** KiroDocs envía la solicitud a Amazon Bedrock mediante la Converse API con salida forzada por *Tool Use*.
 3. **Procesamiento y parseo:** El modelo responde garantizando un esquema JSON estricto.
-4. **Generación de artefactos:** La interfaz presenta el resumen ejecutivo, diagrama Mermaid renderizado, especificación Markdown y código Terraform. **Infraestructura generada automáticamente, lista para revisión y adaptación.**
+4. **Generación de artefactos:** La interfaz presenta el resumen ejecutivo, diagrama Mermaid renderizado, especificación Markdown y código Terraform. **Código Terraform generado automáticamente, listo para ser revisado, adaptado y desplegado.**
 5. **Mecanismo de continuidad:** Si los modelos de Bedrock presentan restricciones temporales, el sistema activa automáticamente el Modo de Continuidad del Servicio con auditoría visual.
+
+### 🖼️ Ejemplo de resultado generado
+
+<p align="center">
+  <img src="docs/kirodocs-result.png" alt="Resultado generado por KiroDocs" width="85%" />
+</p>
+
+> *Ejemplo de la arquitectura e infraestructura generada automáticamente por KiroDocs a partir de un requerimiento en lenguaje natural.*
 
 ---
 
