@@ -96,7 +96,7 @@ El objetivo de KiroDocs no es solo generar texto plausible, sino garantizar una 
 ### Ejemplo de propuesta de arquitectura generada
 
 <p align="center">
-  <img src="docs/kirodocs-result.png" alt="Ejemplo de arquitectura generada por KiroDocs" width="100%" />
+  <img src="docs/kirodocs-result.png" alt="Ejemplo de arquitectura generada por KiroDocs" width="55%" />
 </p>
 
 > *Propuesta de arquitectura visual e infraestructura generada en tiempo real por KiroDocs.*
@@ -215,7 +215,7 @@ Cada generación de arquitectura se resuelve con una sola llamada a la **Convers
 ### 🖼️ Ejemplo de resultado generado
 
 <p align="center">
-  <img src="docs/kirodocs-result.png" alt="Resultado generado por KiroDocs" width="85%" />
+  <img src="docs/kirodocs-result.png" alt="Resultado generado por KiroDocs" width="55%" />
 </p>
 
 > *Ejemplo de la arquitectura e infraestructura generada automáticamente por KiroDocs a partir de un requerimiento en lenguaje natural.*
