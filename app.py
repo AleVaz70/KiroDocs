@@ -440,6 +440,12 @@ SYSTEM_PROMPT = textwrap.dedent(
     - El código Terraform debe ser funcional, usar el provider "aws" (~> 5.0),
       incluir nombres de recursos descriptivos, variables cuando aplique y
       etiquetas (tags) básicas.
+    - Si la arquitectura incluye una o más funciones AWS Lambda, el código
+      Terraform SIEMPRE debe declarar explícitamente un recurso
+      "aws_cloudwatch_log_group" por cada función (o uno compartido, según
+      corresponda), con la propiedad "retention_in_days" configurada con un
+      valor mayor a 0 (ej. 14 o 30). No dependas del log group implícito
+      que Lambda crea automáticamente sin gestión de retención.
     - El README debe estar en formato Markdown válido, con encabezados,
       listas y bloques de código correctamente delimitados, sin indentación
       artificial que rompa el renderizado.
@@ -563,9 +569,9 @@ def generar_respuesta_demo(descripcion: str) -> dict:
             "- **Amazon DynamoDB:** ofrece latencia de un solo dígito en "
             "milisegundos y escalabilidad automática, ideal para cargas de "
             "trabajo serverless impredecibles.\n"
-            "- **Amazon Bedrock:** provee acceso unificado a modelos "
-            "fundacionales (Nova, Claude) mediante la Converse API, evitando "
-            "gestionar infraestructura de inferencia propia.\n\n"
+            "- **Amazon CloudWatch:** centraliza métricas y logs de "
+            "ejecución de Lambda, permitiendo monitorear la salud de la "
+            "arquitectura sin infraestructura de observabilidad adicional.\n\n"
             "### Alternativas Descartadas y Justificación\n\n"
             "- **Amazon EC2:** descartado frente a AWS Lambda porque no "
             "justifica el costo ni la gestión operativa de servidores para "
