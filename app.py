@@ -7,6 +7,7 @@ forzado para garantizar una salida estructurada y consistente: diagrama
 Mermaid.js, documentación README y código Terraform.
 """
 
+import re
 import textwrap
 import time
 from pathlib import Path
@@ -19,6 +20,14 @@ from botocore.exceptions import (
     EndpointConnectionError,
     NoCredentialsError,
 )
+
+try:
+    import hcl2
+
+    HCL2_DISPONIBLE = True
+except ImportError:
+    hcl2 = None
+    HCL2_DISPONIBLE = False
 
 # ---------------------------------------------------------------------------
 # Configuración de la interfaz
@@ -78,6 +87,214 @@ PLANTILLAS = {
 MAX_CARACTERES_PROMPT = 2000
 
 # ---------------------------------------------------------------------------
+# Tarifas estimadas de Amazon Bedrock (on-demand, tier estándar, USD por
+# cada 1.000 tokens). Son valores de referencia públicos y pueden variar
+# según la región o cambios de precio de AWS; se usan únicamente para
+# mostrar un costo estimado orientativo, no una factura real.
+# ---------------------------------------------------------------------------
+PRECIOS_POR_MODELO = {
+    "us.amazon.nova-micro-v1:0": (0.000035, 0.00014),
+    "us.amazon.nova-lite-v1:0": (0.00006, 0.00024),
+    "us.amazon.nova-pro-v1:0": (0.0008, 0.0032),
+    "us.anthropic.claude-3-haiku-20240307-v1:0": (0.00025, 0.00125),
+}
+
+
+def calcular_costo_estimado(model_id: str, input_tokens: int, output_tokens: int) -> float:
+    """Calcula el costo estimado en USD de una invocación a Bedrock.
+
+    Usa las tarifas de referencia de `PRECIOS_POR_MODELO`. Si el modelo no
+    está en la tabla (por ejemplo, "demo-local" del Modo de Continuidad),
+    devuelve 0.0 en lugar de fallar.
+    """
+    precio_input, precio_output = PRECIOS_POR_MODELO.get(model_id, (0.0, 0.0))
+    return (input_tokens / 1000) * precio_input + (output_tokens / 1000) * precio_output
+
+# ---------------------------------------------------------------------------
+# Análisis estático de Terraform: sintaxis HCL y auditoría de seguridad
+# (estilo Checkov / AWS Well-Architected) sobre el código generado, tanto
+# en llamadas reales a Bedrock como en el Modo de Resiliencia.
+# ---------------------------------------------------------------------------
+
+
+def _validar_sintaxis_hcl_basica(codigo_tf: str) -> tuple[bool, str]:
+    """Parser estático de respaldo cuando la librería `hcl2` no está
+    disponible: verifica balance de llaves y presencia de al menos un
+    bloque `resource` bien formado.
+    """
+    abiertas = codigo_tf.count("{")
+    cerradas = codigo_tf.count("}")
+    if abiertas != cerradas:
+        return False, (
+            f"Llaves desbalanceadas: {abiertas} '{{' frente a {cerradas} '}}' "
+            "(validación básica de bloques, librería 'hcl2' no disponible)."
+        )
+    if not re.search(r'resource\s+"[\w-]+"\s+"[\w-]+"\s*\{', codigo_tf):
+        return False, (
+            "No se encontró ningún bloque 'resource' válido "
+            "(validación básica de bloques, librería 'hcl2' no disponible)."
+        )
+    return True, "Correcta (validación básica de bloques, librería 'hcl2' no disponible)."
+
+
+def _extraer_bloques_resource(codigo_tf: str, tipo_recurso: str) -> list[str]:
+    """Extrae el cuerpo (texto entre llaves) de cada bloque `resource` del
+    tipo indicado, respetando llaves anidadas mediante conteo de
+    profundidad en lugar de una expresión regular ingenua.
+    """
+    bloques: list[str] = []
+    patron_inicio = re.compile(rf'resource\s+"{re.escape(tipo_recurso)}"\s+"[\w-]+"\s*\{{')
+    for coincidencia in patron_inicio.finditer(codigo_tf):
+        inicio = coincidencia.end()
+        profundidad = 1
+        posicion = inicio
+        while posicion < len(codigo_tf) and profundidad > 0:
+            if codigo_tf[posicion] == "{":
+                profundidad += 1
+            elif codigo_tf[posicion] == "}":
+                profundidad -= 1
+            posicion += 1
+        bloques.append(codigo_tf[inicio : posicion - 1])
+    return bloques
+
+
+def _chequear_cifrado_dynamodb(codigo_tf: str) -> dict:
+    """Checkov-style: `aws_dynamodb_table` debe tener cifrado en reposo
+    (`server_side_encryption { enabled = true }`)."""
+    nombre_corto = "Cifrado DynamoDB"
+    bloques = _extraer_bloques_resource(codigo_tf, "aws_dynamodb_table")
+    if not bloques:
+        return {
+            "nombre_corto": nombre_corto,
+            "nombre": "Cifrado de DynamoDB en reposo",
+            "pasado": True,
+            "detalle": "No se detectaron tablas DynamoDB en el código (chequeo no aplicable).",
+        }
+    for bloque in bloques:
+        tiene_cifrado = bool(
+            re.search(r"server_side_encryption\s*\{[^}]*enabled\s*=\s*true", bloque, re.DOTALL)
+        )
+        if not tiene_cifrado:
+            return {
+                "nombre_corto": nombre_corto,
+                "nombre": "Cifrado de DynamoDB en reposo",
+                "pasado": False,
+                "detalle": (
+                    "Al menos una tabla DynamoDB no define "
+                    "'server_side_encryption { enabled = true }'."
+                ),
+            }
+    return {
+        "nombre_corto": nombre_corto,
+        "nombre": "Cifrado de DynamoDB en reposo",
+        "pasado": True,
+        "detalle": "Todas las tablas DynamoDB tienen cifrado en reposo habilitado.",
+    }
+
+
+def _chequear_retencion_logs_cloudwatch(codigo_tf: str) -> dict:
+    """Checkov-style: los grupos de logs `aws_cloudwatch_log_group` deben
+    definir una política de retención (`retention_in_days`)."""
+    nombre_corto = "Logs CloudWatch"
+    bloques = _extraer_bloques_resource(codigo_tf, "aws_cloudwatch_log_group")
+    if not bloques:
+        return {
+            "nombre_corto": nombre_corto,
+            "nombre": "Retención de logs en CloudWatch",
+            "pasado": False,
+            "detalle": (
+                "No se encontró ningún 'aws_cloudwatch_log_group' con "
+                "política de retención de logs definida."
+            ),
+        }
+    for bloque in bloques:
+        coincidencia = re.search(r"retention_in_days\s*=\s*(\d+)", bloque)
+        if not coincidencia or int(coincidencia.group(1)) <= 0:
+            return {
+                "nombre_corto": nombre_corto,
+                "nombre": "Retención de logs en CloudWatch",
+                "pasado": False,
+                "detalle": (
+                    "Al menos un grupo de logs de CloudWatch no define "
+                    "'retention_in_days' con un valor mayor a 0."
+                ),
+            }
+    return {
+        "nombre_corto": nombre_corto,
+        "nombre": "Retención de logs en CloudWatch",
+        "pasado": True,
+        "detalle": "Los grupos de logs de CloudWatch definen un período de retención explícito.",
+    }
+
+
+def _chequear_iam_minimo_privilegio(codigo_tf: str) -> dict:
+    """Checkov-style: las políticas IAM (`aws_iam_role_policy` /
+    `aws_iam_policy`) no deben usar comodines ('*') en Action o Resource."""
+    nombre_corto = "IAM Menor Privilegio"
+    bloques = _extraer_bloques_resource(codigo_tf, "aws_iam_role_policy")
+    bloques += _extraer_bloques_resource(codigo_tf, "aws_iam_policy")
+    if not bloques:
+        return {
+            "nombre_corto": nombre_corto,
+            "nombre": "IAM de mínimo privilegio",
+            "pasado": False,
+            "detalle": (
+                "No se encontró ninguna política IAM (aws_iam_role_policy / "
+                "aws_iam_policy) asociada a los roles de la arquitectura."
+            ),
+        }
+    for bloque in bloques:
+        if re.search(r'Action\s*=\s*"\*"', bloque) or re.search(r'Resource\s*=\s*"\*"', bloque):
+            return {
+                "nombre_corto": nombre_corto,
+                "nombre": "IAM de mínimo privilegio",
+                "pasado": False,
+                "detalle": (
+                    "Se detectó una política IAM con permisos comodín ('*') "
+                    "en Action o Resource, lo cual viola el mínimo privilegio."
+                ),
+            }
+    return {
+        "nombre_corto": nombre_corto,
+        "nombre": "IAM de mínimo privilegio",
+        "pasado": True,
+        "detalle": "Las políticas IAM definen acciones y recursos específicos (sin comodines '*').",
+    }
+
+
+def analizar_terraform(codigo_tf: str) -> dict:
+    """Analiza el código Terraform generado (ya sea por una llamada real a
+    Bedrock o por el Modo de Resiliencia): valida su sintaxis HCL y ejecuta
+    una auditoría de seguridad estilo Checkov / AWS Well-Architected sobre
+    puntos críticos (cifrado en reposo de DynamoDB, retención de logs de
+    CloudWatch e IAM de mínimo privilegio).
+
+    Devuelve un diccionario con 'sintaxis_valida', 'sintaxis_detalle' y
+    'chequeos' (lista de dicts con 'nombre_corto', 'nombre', 'pasado' y
+    'detalle').
+    """
+    if HCL2_DISPONIBLE:
+        try:
+            hcl2.loads(codigo_tf)
+            sintaxis_valida, sintaxis_detalle = True, "Correcta (validada con la librería 'hcl2')."
+        except Exception as error:  # noqa: BLE001 - cualquier error de parseo debe reportarse
+            sintaxis_valida, sintaxis_detalle = False, f"Error de sintaxis HCL: {error}"
+    else:
+        sintaxis_valida, sintaxis_detalle = _validar_sintaxis_hcl_basica(codigo_tf)
+
+    chequeos = [
+        _chequear_cifrado_dynamodb(codigo_tf),
+        _chequear_retencion_logs_cloudwatch(codigo_tf),
+        _chequear_iam_minimo_privilegio(codigo_tf),
+    ]
+
+    return {
+        "sintaxis_valida": sintaxis_valida,
+        "sintaxis_detalle": sintaxis_detalle,
+        "chequeos": chequeos,
+    }
+
+# ---------------------------------------------------------------------------
 # Definición de la herramienta (tool use) para forzar salida estructurada
 # ---------------------------------------------------------------------------
 TOOL_NAME = "generar_documentacion_arquitectura"
@@ -98,15 +315,26 @@ TOOL_SPEC = {
                         "type": "string",
                         "description": (
                             "Resumen breve (3-5 líneas) de la solución "
-                            "propuesta, seguido OBLIGATORIAMENTE de una "
-                            "subsección titulada '### Decisiones de Diseño' "
-                            "que justifique brevemente, en formato de lista, "
-                            "por qué se eligió cada servicio principal de la "
+                            "propuesta, seguido OBLIGATORIAMENTE de dos "
+                            "subsecciones en este orden: "
+                            "(1) '### Decisiones de Diseño', que justifique "
+                            "brevemente, en formato de lista, por qué se "
+                            "eligió cada servicio principal de la "
                             "arquitectura (ej. 'AWS Lambda: para eliminar "
                             "costos de compute inactivo', 'DynamoDB: por "
                             "latencia en milisegundos y escalabilidad "
-                            "automática'). Incluye también cualquier decisión "
-                            "de arquitecto tomada ante ambigüedad del "
+                            "automática'); y (2) '### Alternativas "
+                            "Descartadas y Justificación', que explique "
+                            "brevemente, en "
+                            "formato de lista, por qué NO se eligieron otras "
+                            "opciones tradicionales relevantes para este caso "
+                            "(ej. 'Amazon RDS: descartado frente a DynamoDB "
+                            "por no requerir un esquema relacional ni joins "
+                            "complejos', 'Amazon EC2: descartado frente a "
+                            "AWS Lambda por no justificar el costo y la "
+                            "gestión de servidores para esta carga de "
+                            "trabajo'). Incluye también cualquier decisión de "
+                            "arquitecto tomada ante ambigüedad del "
                             "requerimiento."
                         ),
                     },
@@ -128,7 +356,16 @@ TOOL_SPEC = {
                     },
                     "servicios_aws": {
                         "type": "array",
-                        "description": "Lista de servicios de AWS utilizados.",
+                        "description": (
+                            "Lista de servicios de AWS utilizados en la "
+                            "arquitectura. Cada 'nombre' debe usar el nombre "
+                            "oficial del servicio (ej. 'Amazon API Gateway', "
+                            "'AWS Lambda', 'Amazon DynamoDB', 'Amazon "
+                            "CloudWatch') y cada 'descripcion' debe ser una "
+                            "frase breve y concreta que explique su rol en "
+                            "la solución (se renderiza como '- **nombre** — "
+                            "descripcion')."
+                        ),
                         "items": {
                             "type": "object",
                             "properties": {
@@ -213,14 +450,23 @@ SYSTEM_PROMPT = textwrap.dedent(
       arquitecto senior razonables y documenta esas decisiones en
       'resumen_ejecutivo'.
     - El campo 'resumen_ejecutivo' SIEMPRE debe incluir, después del resumen
-      inicial, una subsección titulada exactamente "### Decisiones de
-      Diseño" (formato Markdown). En esa subsección, justifica en una lista
-      con viñetas por qué elegiste cada servicio principal de la
-      arquitectura, en una frase breve y concreta (ej. "AWS Lambda: para
-      eliminar costos de compute inactivo y escalar automáticamente con la
-      demanda.", "Amazon DynamoDB: por latencia en milisegundos y
-      escalabilidad automática sin gestión de servidores."). No omitas esta
-      subsección bajo ninguna circunstancia.
+      inicial, dos subsecciones en este orden exacto:
+      1. "### Decisiones de Diseño" (formato Markdown): justifica en una
+         lista con viñetas por qué elegiste cada servicio principal de la
+         arquitectura, en una frase breve y concreta (ej. "AWS Lambda: para
+         eliminar costos de compute inactivo y escalar automáticamente con
+         la demanda.", "Amazon DynamoDB: por latencia en milisegundos y
+         escalabilidad automática sin gestión de servidores.").
+      2. "### Alternativas Descartadas y Justificación" (formato Markdown):
+         explica en una lista con viñetas por qué NO elegiste otras opciones tradicionales
+         relevantes para este caso de uso, en una frase breve y concreta
+         (ej. "Amazon RDS: descartado frente a DynamoDB porque el modelo de
+         datos no requiere un esquema relacional ni consultas con joins
+         complejos.", "Amazon EC2: descartado frente a AWS Lambda porque no
+         justifica el costo ni la gestión operativa de servidores para esta
+         carga de trabajo.").
+      No omitas ninguna de estas dos subsecciones bajo ninguna
+      circunstancia.
     """
 ).strip()
 
@@ -248,8 +494,13 @@ def generar_arquitectura(
     region: str,
     temperatura: float,
     max_tokens: int,
-) -> dict:
-    """Invoca Amazon Bedrock (Converse API) y devuelve el JSON estructurado."""
+) -> tuple[dict, dict]:
+    """Invoca Amazon Bedrock (Converse API) y devuelve el JSON estructurado
+    junto con el uso de tokens reportado por la API (`usage`).
+
+    Devuelve: (resultado, uso_tokens), donde uso_tokens tiene las claves
+    'inputTokens', 'outputTokens' y 'totalTokens'.
+    """
     cliente = obtener_cliente_bedrock(region)
 
     respuesta = cliente.converse(
@@ -268,10 +519,17 @@ def generar_arquitectura(
         inferenceConfig={"temperature": temperatura, "maxTokens": max_tokens},
     )
 
+    uso = respuesta.get("usage", {})
+    uso_tokens = {
+        "inputTokens": uso.get("inputTokens", 0),
+        "outputTokens": uso.get("outputTokens", 0),
+        "totalTokens": uso.get("totalTokens", 0),
+    }
+
     bloques_contenido = respuesta["output"]["message"]["content"]
     for bloque in bloques_contenido:
         if "toolUse" in bloque and bloque["toolUse"]["name"] == TOOL_NAME:
-            return bloque["toolUse"]["input"]
+            return bloque["toolUse"]["input"], uso_tokens
 
     raise ValueError(
         "El modelo no devolvió una respuesta estructurada válida. "
@@ -290,14 +548,11 @@ def generar_respuesta_demo(descripcion: str) -> dict:
     return {
         "resumen_ejecutivo": (
             "**Modo de Resiliencia**\n\n"
-            "No fue posible contactar a ningún modelo de Amazon Bedrock "
-            "debido a restricciones temporales del servicio (como límites "
-            "de cuota, throttling o disponibilidad de acceso). KiroDocs "
-            "proporciona automáticamente una Arquitectura de Continuidad "
-            "validada para que el flujo de trabajo pueda continuar sin "
-            "interrupciones. Cuando Bedrock vuelva a estar disponible, "
-            "podrás generar nuevamente una propuesta personalizada basada "
-            "en tu requerimiento.\n\n"
+            "No fue posible establecer una conexión con Amazon Bedrock "
+            "(credenciales, acceso o restricciones temporales). KiroDocs "
+            "activó automáticamente su mecanismo de resiliencia para "
+            "mantener la continuidad del servicio y proporcionar una "
+            "arquitectura de referencia validada.\n\n"
             "### Decisiones de Diseño\n\n"
             "- **Amazon API Gateway:** expone un endpoint HTTP administrado "
             "con autenticación, throttling y monitoreo integrados, sin "
@@ -310,7 +565,18 @@ def generar_respuesta_demo(descripcion: str) -> dict:
             "trabajo serverless impredecibles.\n"
             "- **Amazon Bedrock:** provee acceso unificado a modelos "
             "fundacionales (Nova, Claude) mediante la Converse API, evitando "
-            "gestionar infraestructura de inferencia propia."
+            "gestionar infraestructura de inferencia propia.\n\n"
+            "### Alternativas Descartadas y Justificación\n\n"
+            "- **Amazon EC2:** descartado frente a AWS Lambda porque no "
+            "justifica el costo ni la gestión operativa de servidores para "
+            "una carga de trabajo serverless con tráfico variable.\n"
+            "- **Amazon RDS:** descartado frente a DynamoDB porque el "
+            "modelo de datos no requiere un esquema relacional ni consultas "
+            "con joins complejos.\n"
+            "- **Application Load Balancer + contenedores:** descartado "
+            "frente a API Gateway + Lambda por añadir complejidad "
+            "operativa innecesaria para un endpoint HTTP de baja a media "
+            "complejidad."
         ),
         "diagrama_mermaid": textwrap.dedent(
             """
@@ -344,20 +610,33 @@ def generar_respuesta_demo(descripcion: str) -> dict:
         ).strip(),
         "servicios_aws": [
             {
-                "nombre": "AWS API Gateway",
-                "descripcion": "Gestión de endpoints HTTP/REST y enrutamiento seguro.",
+                "nombre": "Amazon API Gateway",
+                "descripcion": (
+                    "Expone de forma segura los endpoints HTTP/REST, "
+                    "gestionando autenticación, control de tráfico y "
+                    "enrutamiento."
+                ),
             },
             {
                 "nombre": "AWS Lambda",
-                "descripcion": "Ejecución de lógica de negocio en entorno Serverless.",
+                "descripcion": (
+                    "Ejecuta la lógica de negocio bajo un modelo serverless "
+                    "con escalado automático y pago por uso."
+                ),
             },
             {
                 "nombre": "Amazon DynamoDB",
-                "descripcion": "Almacenamiento NoSQL gestionado de alta disponibilidad.",
+                "descripcion": (
+                    "Proporciona almacenamiento NoSQL administrado, "
+                    "altamente disponible y de baja latencia."
+                ),
             },
             {
                 "nombre": "Amazon CloudWatch",
-                "descripcion": "Monitoreo y centralización de logs de ejecución.",
+                "descripcion": (
+                    "Centraliza métricas, registros y monitoreo operativo "
+                    "para facilitar la observabilidad de la solución."
+                ),
             },
         ],
         "readme_markdown": textwrap.dedent(
@@ -408,10 +687,58 @@ def generar_respuesta_demo(descripcion: str) -> dict:
                 type = "S"
               }
 
+              server_side_encryption {
+                enabled = true
+              }
+
               tags = {
                 Project = "KiroDocs"
                 Mode    = "Resiliencia"
               }
+            }
+
+            resource "aws_cloudwatch_log_group" "lambda_logs" {
+              name              = "/aws/lambda/kirodocs-demo"
+              retention_in_days = 30
+
+              tags = {
+                Project = "KiroDocs"
+                Mode    = "Resiliencia"
+              }
+            }
+
+            resource "aws_iam_role" "lambda_exec_role" {
+              name = "kirodocs-demo-lambda-role"
+
+              assume_role_policy = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{
+                  Action    = "sts:AssumeRole"
+                  Effect    = "Allow"
+                  Principal = { Service = "lambda.amazonaws.com" }
+                }]
+              })
+            }
+
+            resource "aws_iam_role_policy" "lambda_least_privilege" {
+              name = "kirodocs-demo-least-privilege"
+              role = aws_iam_role.lambda_exec_role.id
+
+              policy = jsonencode({
+                Version = "2012-10-17"
+                Statement = [
+                  {
+                    Effect   = "Allow"
+                    Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query"]
+                    Resource = aws_dynamodb_table.main_db.arn
+                  },
+                  {
+                    Effect   = "Allow"
+                    Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+                    Resource = "${aws_cloudwatch_log_group.lambda_logs.arn}:*"
+                  }
+                ]
+              })
             }
             """
         ).strip(),
@@ -420,13 +747,22 @@ def generar_respuesta_demo(descripcion: str) -> dict:
             "Habilitar cifrado en reposo (KMS) en la tabla DynamoDB.",
             "Restringir el acceso al API Gateway mediante un autorizador (Cognito o Lambda Authorizer).",
         ],
+        # Valores simulados de uso de tokens, ya que el Modo de Continuidad
+        # no realiza ninguna llamada real a Amazon Bedrock. Se usan solo
+        # para que el badge de métricas muestre un dato de referencia
+        # consistente en lugar de quedar vacío.
+        "_uso_tokens_simulado": {
+            "inputTokens": 450,
+            "outputTokens": 1200,
+            "totalTokens": 1650,
+        },
     }
 
 
 def describir_error_boto(error: Exception) -> str:
     """Devuelve una descripción corta y legible de un error de boto3."""
     if isinstance(error, NoCredentialsError):
-        return "credenciales de AWS no encontradas"
+        return "Sin conexión a Amazon Bedrock"
     if isinstance(error, EndpointConnectionError):
         return "no se pudo conectar con el endpoint de Bedrock"
     if isinstance(error, ClientError):
@@ -442,7 +778,7 @@ def generar_arquitectura_con_fallback(
     region: str,
     temperatura: float,
     max_tokens: int,
-) -> tuple[dict, str, str, list[tuple[str, Exception]], bool]:
+) -> tuple[dict, str, str, list[tuple[str, Exception]], bool, dict]:
     """
     Intenta generar la arquitectura probando los modelos en el orden recibido.
 
@@ -457,20 +793,20 @@ def generar_arquitectura_con_fallback(
     seguir viendo la interfaz funcionando.
 
     Devuelve: (resultado, nombre_modelo_usado, model_id_usado,
-    intentos_fallidos, es_demo)
+    intentos_fallidos, es_demo, uso_tokens)
     """
     intentos_fallidos: list[tuple[str, Exception]] = []
 
     for nombre_modelo, model_id in orden_modelos:
         try:
-            resultado = generar_arquitectura(
+            resultado, uso_tokens = generar_arquitectura(
                 descripcion=descripcion,
                 model_id=model_id,
                 region=region,
                 temperatura=temperatura,
                 max_tokens=max_tokens,
             )
-            return resultado, nombre_modelo, model_id, intentos_fallidos, False
+            return resultado, nombre_modelo, model_id, intentos_fallidos, False, uso_tokens
         except (ClientError, BotoCoreError, ValueError) as error:
             intentos_fallidos.append((nombre_modelo, error))
             continue
@@ -479,7 +815,17 @@ def generar_arquitectura_con_fallback(
     # lugar de lanzar una excepción, para no interrumpir la experiencia del
     # usuario mientras se resuelve la cuota de Bedrock.
     resultado_demo = generar_respuesta_demo(descripcion)
-    return resultado_demo, "Modo Resiliencia (sin conexión a Bedrock)", "demo-local", intentos_fallidos, True
+    uso_tokens_demo = resultado_demo.pop(
+        "_uso_tokens_simulado", {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}
+    )
+    return (
+        resultado_demo,
+        "Modo Resiliencia (sin conexión a Bedrock)",
+        "demo-local",
+        intentos_fallidos,
+        True,
+        uso_tokens_demo,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -576,7 +922,7 @@ with col_der:
                     # Bedrock como la cadena de reintentos y, si aplica, la
                     # activación del Modo de Continuidad del Servicio.
                     inicio = time.time()
-                    resultado, nombre_modelo_usado, model_id_usado, intentos_fallidos, es_demo = (
+                    resultado, nombre_modelo_usado, model_id_usado, intentos_fallidos, es_demo, uso_tokens = (
                         generar_arquitectura_con_fallback(
                             descripcion=descripcion_limpia,
                             orden_modelos=orden_modelos,
@@ -588,21 +934,31 @@ with col_der:
                     fin = time.time()
                     latencia_segundos = fin - inicio
 
+                    tokens_totales = uso_tokens.get("totalTokens", 0)
+                    costo_estimado = calcular_costo_estimado(
+                        model_id_usado,
+                        uso_tokens.get("inputTokens", 0),
+                        uso_tokens.get("outputTokens", 0),
+                    )
+
                     st.session_state["kirodocs_resultado"] = resultado
                     st.session_state["kirodocs_prompt"] = descripcion_limpia
                     st.session_state["kirodocs_modelo_usado"] = nombre_modelo_usado
                     st.session_state["kirodocs_es_demo"] = es_demo
                     st.session_state["kirodocs_latencia"] = latencia_segundos
                     st.session_state["kirodocs_region_usada"] = region_seleccionada
+                    st.session_state["kirodocs_tokens_totales"] = tokens_totales
+                    st.session_state["kirodocs_costo_estimado"] = costo_estimado
 
                     if es_demo:
                         st.info(
-                            "Modo de Continuidad Activo: Ante restricciones "
-                            "temporales de cuota en Amazon Bedrock, KiroDocs "
-                            "activa automáticamente su mecanismo de "
-                            "resiliencia para proporcionar una arquitectura "
-                            "de referencia validada y garantizar la "
-                            "continuidad del servicio."
+                            "Modo de Continuidad Activo: No fue posible "
+                            "establecer una conexión con Amazon Bedrock "
+                            "(credenciales, acceso o restricciones "
+                            "temporales). KiroDocs activó automáticamente su "
+                            "mecanismo de resiliencia para mantener la "
+                            "continuidad del servicio y proporcionar una "
+                            "arquitectura de referencia validada."
                         )
                         st.caption(
                             "El panel de diagnóstico registra la traza de "
@@ -645,7 +1001,22 @@ with col_der:
         region_metrica = st.session_state.get(
             "kirodocs_region_usada", region_seleccionada
         )
+        tokens_metrica = st.session_state.get("kirodocs_tokens_totales", 0)
+        costo_metrica = st.session_state.get("kirodocs_costo_estimado", 0.0)
+        es_demo_metrica = st.session_state.get("kirodocs_es_demo", False)
         if latencia_metrica is not None:
+            if es_demo_metrica:
+                # Modo Resiliencia: no hubo llamada real a Bedrock, por lo
+                # tanto los tokens son estimados/simulados y el costo no es
+                # calculable de forma honesta (se muestra N/A en vez de $0).
+                fila_tokens = f"<strong>Tokens (est.):</strong> {tokens_metrica}"
+                fila_costo = "<strong>Costo est.:</strong> N/A"
+                fila_modelo = "<strong>Modelo:</strong> Modo Resiliencia"
+            else:
+                fila_tokens = f"<strong>Tokens:</strong> {tokens_metrica}"
+                fila_costo = f"<strong>Costo est.:</strong> ${costo_metrica:.4f} USD"
+                fila_modelo = f"<strong>Modelo:</strong> {nombre_modelo_metrica}"
+
             st.markdown(
                 f"""
                 <div style="
@@ -659,9 +1030,13 @@ with col_der:
                     border:1px solid rgba(56,189,248,0.35);
                     margin-bottom:0.75rem;
                 ">
-                    <strong>Tiempo de generación:</strong> {latencia_metrica:.2f}s
+                    <strong>Tiempo:</strong> {latencia_metrica:.2f}s
                     &nbsp;|&nbsp;
-                    <strong>Modelo activo:</strong> {nombre_modelo_metrica}
+                    {fila_modelo}
+                    &nbsp;|&nbsp;
+                    {fila_tokens}
+                    &nbsp;|&nbsp;
+                    {fila_costo}
                     &nbsp;|&nbsp;
                     <strong>Región:</strong> {region_metrica}
                 </div>
@@ -719,10 +1094,10 @@ with col_der:
                     st.code(diagrama, language="mermaid")
 
             if resultado.get("servicios_aws"):
-                st.write("#### Servicios utilizados")
+                st.write("### Servicios AWS utilizados en esta arquitectura")
                 for servicio in resultado["servicios_aws"]:
                     st.markdown(
-                        f"- **{servicio.get('nombre', '')}:** "
+                        f"- **{servicio.get('nombre', '')}** — "
                         f"{servicio.get('descripcion', '')}"
                     )
 
@@ -742,13 +1117,43 @@ with col_der:
 
         with tab_codigo:
             st.write("#### Infraestructura como Código (IaC)")
-            st.code(resultado.get("terraform_code", ""), language="terraform")
+            terraform_generado = resultado.get("terraform_code", "")
+            st.code(terraform_generado, language="terraform")
             st.download_button(
                 "⬇️ Descargar main.tf",
-                data=resultado.get("terraform_code", ""),
+                data=terraform_generado,
                 file_name="main.tf",
                 mime="text/plain",
             )
+
+            analisis_tf = analizar_terraform(terraform_generado)
+            with st.expander("Análisis de Seguridad & Cumplimiento (Checkov & Sintaxis HCL)"):
+                if analisis_tf["sintaxis_valida"]:
+                    st.markdown(f"**Sintaxis HCL:** Correcta — {analisis_tf['sintaxis_detalle']}")
+                else:
+                    st.markdown(f"**Sintaxis HCL:** Con errores — {analisis_tf['sintaxis_detalle']}")
+
+                chequeos_tf = analisis_tf["chequeos"]
+                pasados = [c for c in chequeos_tf if c["pasado"]]
+                fallidos = [c for c in chequeos_tf if not c["pasado"]]
+                nombres_pasados = ", ".join(c["nombre_corto"] for c in pasados)
+
+                if not fallidos:
+                    st.markdown(
+                        f"**Auditoría de Seguridad Checkov / Well-Architected:** "
+                        f"0 Vulnerabilidades Críticas "
+                        f"({len(pasados)} Chequeos Pasados: {nombres_pasados})."
+                    )
+                else:
+                    st.markdown(
+                        f"**Auditoría de Seguridad Checkov / Well-Architected:** "
+                        f"{len(fallidos)} Vulnerabilidad(es) Crítica(s) detectada(s) "
+                        f"({len(pasados)} Chequeos Pasados: {nombres_pasados})."
+                    )
+
+                for chequeo in chequeos_tf:
+                    icono = "✅" if chequeo["pasado"] else "❌"
+                    st.markdown(f"- {icono} **{chequeo['nombre']}:** {chequeo['detalle']}")
 
         with tab_prompt:
             st.write("#### Prompt Estructurado enviado a Kiro AI")
