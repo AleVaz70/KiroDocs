@@ -59,6 +59,7 @@ Requerimiento                  AWS Bedrock                  Salida generada
 - **Generación mediante Bedrock:** Invocación avanzada de Amazon Bedrock a través de la Converse API con *Tool Use*.
 - **Mecanismo de Resiliencia:** Continuidad del servicio garantizada ante restricciones temporales de cuota (`ThrottlingException`).
 - **Auditoría y Observabilidad:** Panel de trazabilidad de llamadas a Bedrock y prompts estructurados en tiempo real.
+- **Arquitecturas Explicables:** cada decisión de infraestructura incluye su correspondiente justificación técnica.
 - **Construido con Kiro AI:** Integración de Agent Skills oficiales (`.kiro/skills/`) del Agent Toolkit for AWS.
 
 ---
@@ -190,7 +191,7 @@ Este diseño garantiza que KiroDocs **siempre tiene algo funcional que mostrar**
 |---|---|
 | **Lenguaje** | Python 3.11 |
 | **Frontend / UI** | [Streamlit](https://streamlit.io/) con interfaz personalizada estilo **AWS Dark / Neón**: tipografía Google Fonts (*Plus Jakarta Sans* + *Inter*), gradiente cian–violeta con efecto *glow*, tarjetas y sidebar con *glassmorphism* (`backdrop-filter: blur`), y pestañas estilo cápsula (*pill tabs*) |
-| **IA & LLMs** | **Amazon Bedrock**, invocado mediante la **API Converse** de `boto3` (`boto3.client("bedrock-runtime").converse`), con salida forzada mediante **Tool Use / Function Calling** (`toolConfig` + `toolChoice`) para garantizar JSON estructurado y válido en cada respuesta |
+| **IA & LLMs** | **Amazon Bedrock**, invocado mediante la **API Converse** de `boto3` (`boto3.client("bedrock-runtime").converse`), con salida forzada mediante **Tool Use / Function Calling** (`toolConfig` + `toolChoice`) para solicitar respuestas estructuradas mediante Tool Use |
 | **Modelos invocados** | Familia **Amazon Nova** (Nova Lite, Nova Pro, Nova Micro) y **Anthropic Claude** (Claude 3 Haiku), todos accesibles vía *inference profiles* cross-region (`us.*`) sobre el mismo cliente `bedrock-runtime` |
 | **Infraestructura generada** | Terraform (`provider "aws" ~> 5.0`) y diagramas en sintaxis Mermaid.js |
 | **SDK de AWS** | [boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html) / botocore, con manejo explícito de `ClientError`, `BotoCoreError`, `NoCredentialsError` y `EndpointConnectionError` |
