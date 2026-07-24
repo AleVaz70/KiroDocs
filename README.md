@@ -111,14 +111,6 @@ Cada solicitud generada por KiroDocs produce cuatro artefactos coherentes entre 
 
 El objetivo de KiroDocs no es solo generar texto plausible, sino garantizar una **salida estructurada y consistente** en cada ejecución, algo que se logra forzando al modelo de lenguaje a responder mediante `Tool Use` (function calling) en vez de texto libre — de esa forma, el diagrama, el README y el Terraform vienen siempre completos y bien formados, sin necesidad de parsear texto ambiguo.
 
-### Ejemplo de propuesta de arquitectura generada
-
-<p align="center">
-  <img src="docs/kirodocs-result.png" alt="Ejemplo de arquitectura generada por KiroDocs" width="55%" />
-</p>
-
-> *Propuesta de arquitectura visual e infraestructura generada en tiempo real por KiroDocs.*
-
 ---
 
 ## El Rol de Kiro AI en el Desarrollo
