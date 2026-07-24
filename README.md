@@ -219,7 +219,7 @@ Cada generación de arquitectura se resuelve con una sola llamada a la **Convers
 4. **Generación de artefactos:** La interfaz presenta el resumen ejecutivo, diagrama Mermaid renderizado, especificación Markdown y código Terraform. **Código Terraform generado automáticamente, listo para ser revisado, adaptado y desplegado.**
 5. **Mecanismo de continuidad:** Si los modelos de Bedrock presentan restricciones temporales, el sistema activa automáticamente el Modo de Continuidad del Servicio con auditoría visual.
 
-### 🖼️ Ejemplo de resultado generado
+### Ejemplo de resultado generado
 
 <p align="center">
   <img src="docs/kirodocs-result.png" alt="Resultado generado por KiroDocs" width="55%" />
