@@ -144,6 +144,12 @@ Referencia técnica de los archivos y funciones concretas que Kiro ayudó a cons
 
 ## Arquitectura y Mecanismo de Resiliencia
 
+### Arquitectura de Referencia AWS
+
+![Arquitectura de Referencia AWS](docs/aws-reference-architecture.png)
+
+> **Nota de Diseño:** Esta ilustración representa la arquitectura de referencia utilizando la iconografía oficial de AWS. Durante la ejecución, KiroDocs genera dinámicamente este diagrama en código **Mermaid.js** para facilitar su integración directa en repositorios y documentación técnica.
+
 Los modelos de Amazon Bedrock, especialmente bajo cuota de cuenta nuevas o en regiones con alta demanda, pueden rechazar solicitudes con errores como `ThrottlingException` o `AccessDeniedException`. Un agente de arquitectura que se cae ante el primer error de cuota no es utilizable en un entorno real ni demostrable de forma confiable frente a un jurado — por eso KiroDocs integra un **Mecanismo de Resiliencia de nivel de producción**, con reintentos en cascada entre modelos.
 
 ### Cómo funciona
