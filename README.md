@@ -19,7 +19,7 @@
 
 ### 1. Pantalla Inicial
 <p align="center">
-  <img src="docs/kirodocs-main.png" alt="Pantalla Inicial de KiroDocs" width="70%" />
+  <img src="docs/kirodocs-main.png" alt="Pantalla Inicial de KiroDocs" width="90%" />
 </p>
 
 > *Pantalla inicial de KiroDocs. El usuario selecciona una plantilla o describe su requerimiento en lenguaje natural antes de generar la propuesta de arquitectura.*
@@ -28,16 +28,16 @@
 
 ### 2. Flujo Completo de Generación
 <p align="center">
-  <img src="docs/kirodocs-demo.gif" alt="Flujo Completo de Generación de KiroDocs" width="70%" />
+  <img src="docs/kirodocs-demo.gif" alt="Flujo Completo de Generación de KiroDocs" width="90%" />
 </p>
 
-> *Flujo completo de KiroDocs (29 s): desde la descripción del requerimiento hasta la generación de la arquitectura AWS, el diagrama Mermaid, la documentación técnica, el código Terraform y el análisis de seguridad.*
+> *Flujo completo de KiroDocs: desde la descripción del requerimiento hasta la generación de la arquitectura AWS, el diagrama Mermaid, la documentación técnica, el código Terraform y el análisis de seguridad.*
 
 ---
 
 ### 3. Resultado Final
 <p align="center">
-  <img src="docs/kirodocs-result.png" alt="Resultado Final Generado por KiroDocs" height="380px" />
+  <img src="docs/kirodocs-result.png" alt="Resultado Final Generado por KiroDocs" width="85%" />
 </p>
 
 > *Resultado final generado por KiroDocs: propuesta de arquitectura, diagrama Mermaid, documentación técnica, código Terraform y validación automática de reglas de seguridad.*
@@ -157,7 +157,7 @@ Referencia técnica de los archivos y funciones concretas que Kiro ayudó a cons
 ### Arquitectura de Referencia AWS
 
 <p align="center">
-  <img src="docs/aws-reference-architecture.png" alt="Arquitectura de Referencia AWS" height="320px" />
+  <img src="docs/aws-reference-architecture.png" alt="Arquitectura de Referencia AWS" width="80%" />
 </p>
 
 > **Nota sobre los diagramas:** La siguiente imagen representa la **arquitectura de referencia** oficial utilizada como respaldo en el Modo de Continuidad. Los diagramas generados dinámicamente por la aplicación mediante Amazon Bedrock se adaptan al requerimiento específico del usuario y se renderizan de forma interactiva en Mermaid.js directamente en la interfaz.
