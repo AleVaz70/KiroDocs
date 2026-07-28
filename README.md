@@ -83,18 +83,19 @@ Requerimiento                  AWS Bedrock                  Salida generada
 
 ## Tabla de Contenidos
 
-- [¿Qué problema resuelve?](#-qué-problema-resuelve)
-- [Características Principales](#-características-principales)
-- [Visión General](#-visión-general)
-- [El Rol de Kiro AI en el Desarrollo](#-el-rol-de-kiro-ai-en-el-desarrollo)
-- [Arquitectura y Mecanismo de Resiliencia](#-arquitectura-y-mecanismo-de-resiliencia)
-- [Stack Tecnológico y Uso de Amazon Bedrock](#-stack-tecnológico-y-uso-de-amazon-bedrock)
+- [KiroDocs en Acción](#kirodocs-en-acción)
+- [¿Qué problema resuelve?](#qué-problema-resuelve)
+- [Características Principales](#características-principales)
+- [Visión General](#visión-general)
+- [El Rol de Kiro AI en el Desarrollo](#el-rol-de-kiro-ai-en-el-desarrollo)
+- [Arquitectura y Mecanismo de Resiliencia](#arquitectura-y-mecanismo-de-resiliencia)
+- [Stack Tecnológico y Uso de Amazon Bedrock](#stack-tecnológico-y-uso-de-amazon-bedrock)
 - [Flujo de trabajo](#flujo-de-trabajo)
-- [Estructura del Repositorio](#-estructura-del-repositorio)
-- [Guía de Instalación](#-guía-de-instalación)
-- [Panel de Diagnóstico e Inspección en Tiempo Real](#-panel-de-diagnóstico-e-inspección-en-tiempo-real)
-- [Consideraciones de Seguridad](#-consideraciones-de-seguridad)
-- [Licencia](#-licencia)
+- [Estructura del Repositorio](#estructura-del-repositorio)
+- [Guía de Instalación](#guía-de-instalación)
+- [Panel de Diagnóstico e Inspección en Tiempo Real](#panel-de-diagnóstico-e-inspección-en-tiempo-real)
+- [Consideraciones de Seguridad](#consideraciones-de-seguridad)
+- [Licencia](#licencia)
 
 ---
 
