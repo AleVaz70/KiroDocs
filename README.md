@@ -37,7 +37,7 @@
 
 ### 3. Resultado Final
 <p align="center">
-  <img src="docs/kirodocs-result.png" alt="Resultado Final Generado por KiroDocs" width="70%" />
+  <img src="docs/kirodocs-result.png" alt="Resultado Final Generado por KiroDocs" height="380px" />
 </p>
 
 > *Resultado final generado por KiroDocs: propuesta de arquitectura, diagrama Mermaid, documentación técnica, código Terraform y validación automática de reglas de seguridad.*
@@ -157,7 +157,7 @@ Referencia técnica de los archivos y funciones concretas que Kiro ayudó a cons
 ### Arquitectura de Referencia AWS
 
 <p align="center">
-  <img src="docs/aws-reference-architecture.png" alt="Arquitectura de Referencia AWS" width="50%" />
+  <img src="docs/aws-reference-architecture.png" alt="Arquitectura de Referencia AWS" height="320px" />
 </p>
 
 > **Nota sobre los diagramas:** La siguiente imagen representa la **arquitectura de referencia** oficial utilizada como respaldo en el Modo de Continuidad. Los diagramas generados dinámicamente por la aplicación mediante Amazon Bedrock se adaptan al requerimiento específico del usuario y se renderizan de forma interactiva en Mermaid.js directamente en la interfaz.
