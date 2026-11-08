@@ -359,3 +359,6 @@ Este proyecto se distribuye bajo la licencia **MIT**. Consulta el archivo `LICEN
 <p align="center">
   Construido utilizando <strong>Kiro AI</strong> para el Hackathon de Código Facilito y AWS.
 </p>
+
+
+<img width="313" height="321" alt="image" src="https://github.com/user-attachments/assets/8633b823-a43f-4a05-a8c6-c7f456d8463a" />
